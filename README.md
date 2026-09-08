@@ -1,4 +1,4 @@
-[index.html](https://github.com/user-attachments/files/31738269/index.html)
+[index.html](https://github.com/user-attachments/files/31945330/index.html)
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -59,14 +59,13 @@
   .success-msg{background:var(--success-bg); color:var(--success); border:1px solid var(--success); padding:9px 12px; border-radius:7px; font-size:13px; margin-bottom:14px;}
   .info-msg{background:var(--surface-alt); color:var(--ink-soft); border:1px dashed var(--border); padding:14px; border-radius:7px; font-size:13.5px; text-align:center;}
 
-  /* Topbar & Search */
   .topbar{background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#fff; padding:11px 22px; display:flex; align-items:center; justify-content:space-between; gap:14px; border-bottom:3px solid var(--accent); flex-wrap:wrap;}
   .topbar.mgr{border-bottom-color:var(--manager);}
   .topbar.admin{border-bottom-color:var(--admin-role);}
   .topbar-right{display:flex; align-items:center; gap:16px; flex:1; min-width:260px;}
   .topbar .brand{display:flex; align-items:center; gap:10px; flex-shrink:0;}
   .topbar .brand .brand-title{color:#fff; font-size:15.5px;}
-  
+
   .topbar-search-wrap{position:relative; flex:1; max-width:320px; display:flex; align-items:center;}
   .topbar-search-wrap svg{position:absolute; right:11px; color:rgba(255,255,255,0.7); pointer-events:none;}
   .topbar-search-input{
@@ -86,7 +85,11 @@
   .topbar-search-item:hover{background:var(--surface-alt); color:var(--primary);}
 
   .topbar-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
-  .topbar .who{font-size:12.5px; opacity:.92;}
+  .topbar .who-wrap{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; opacity:.96;}
+  .topbar .who-code-badge{
+    background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.35);
+    border-radius:10px; padding:1px 7px; font-size:11px; font-family:monospace; direction:ltr;
+  }
   .link-btn{background:transparent; border:1px solid rgba(255,255,255,.5); color:#fff; padding:6px 12px; border-radius:7px; font-family:inherit; font-size:12.5px; cursor:pointer; font-weight:600;}
   .link-btn:hover{background:rgba(255,255,255,.12);}
   .link-btn-accent{background:rgba(197,138,43,0.3); border-color:var(--accent); color:#fff;}
@@ -159,7 +162,7 @@
   .stat-card .lbl{font-size:12px; color:var(--ink-soft);}
 
   .backup-card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px; margin-bottom:20px; box-shadow:0 4px 16px rgba(23,59,94,.04);}
-  .backup-options{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-top:14px;}
+  .backup-options{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;}
   .backup-box{background:var(--surface-alt); border:1px solid var(--border); border-radius:10px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; gap:12px;}
   .backup-box h4{margin:0; font-size:15px; color:var(--primary); font-weight:700;}
   .backup-box p{margin:0; font-size:12.5px; color:var(--ink-soft); line-height:1.6;}
@@ -181,13 +184,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-// Error Boundary to prevent any blank screen
 window.onerror = function(msg, url, line){
   console.error("System Error caught:", msg, "line:", line);
-  const app = document.getElementById('app');
-  if(app && app.innerHTML.trim() === ""){
-    app.innerHTML = '<div class="center-screen"><div class="panel"><h1>مرحباً بك</h1><p class="sub">جارِ تجهيز السجل، اضغط على الزر التالي للدخول:</p><button class="btn btn-primary btn-block" onclick="location.reload()">تحديث وبدء التشغيل</button></div></div>';
-  }
 };
 
 const firebaseConfig = {
@@ -207,32 +205,31 @@ try{
     db = firebase.firestore(); 
     firebaseReady = true; 
   }
-}catch(e){ console.warn('Firebase init notice', e); }
+}catch(e){}
 
 const COLLECTION = 'attendance_app';
 async function storageGet(key){
   if(!db) return null;
   try{ const doc = await db.collection(COLLECTION).doc(key).get(); return doc.exists ? doc.data().value : null; }
-  catch(e){ console.warn('get failed', key); return null; }
+  catch(e){ return null; }
 }
 async function storageSet(key, value){
   if(!db) return;
-  try{ await db.collection(COLLECTION).doc(key).set({ value }); }
-  catch(e){ console.warn('set failed', key); }
+  try{ await db.collection(COLLECTION).doc(key).set({ value }); }catch(e){}
 }
 
 const DEFAULT_JOB_TITLES = ['موظف', 'محاسب', 'سائق', 'إداري', 'خدمة عملاء', 'مندوب توصيل'];
 const LEAVE_TYPES = { annual_leave:{label:'إجازة سنوية'}, casual_leave:{label:'إجازة عارضة'} };
 const REQUEST_TYPES = {
-  late:               { label:'إذن حضور متأخر', showFrom:false, showTo:false },
-  early_leave:        { label:'إذن انصراف مبكر', showFrom:false, showTo:false },
-  annual_leave:       { label:'إجازة سنوية', showFrom:false, showTo:false },
-  casual_leave:       { label:'إجازة عارضة', showFrom:false, showTo:false },
-  deduction_leave:    { label:'إجازة خصم بيوم', showFrom:false, showTo:false },
-  rest_day_work:      { label:'عمل يوم راحة', showFrom:false, showTo:false },
-  assignment:         { label:'تكليف', showFrom:false, showTo:false },
-  no_fingerprint_in:  { label:'حضور بدون بصمة', showFrom:true, showTo:false },
-  no_fingerprint_out: { label:'انصراف بدون بصمة', showFrom:false, showTo:true }
+  late:               { label:'إذن حضور متأخر' },
+  early_leave:        { label:'إذن انصراف مبكر' },
+  annual_leave:       { label:'إجازة سنوية' },
+  casual_leave:       { label:'إجازة عارضة' },
+  deduction_leave:    { label:'إجازة خصم بيوم' },
+  rest_day_work:      { label:'عمل يوم راحة' },
+  assignment:         { label:'تكليف' },
+  no_fingerprint_in:  { label:'حضور بدون بصمة' },
+  no_fingerprint_out: { label:'انصراف بدون بصمة' }
 };
 const PENALTY_TYPES = {
   quarter_day:{ label:'جزاء ربع يوم', weight:0.25 },
@@ -244,11 +241,11 @@ const PENALTY_TYPES = {
 
 let DB = { adminConfig:null, departments:[], people:[], requests:[], penalties:[], attendance:{}, jobTitles:[], leaveBalances:{}, auditLogs:[] };
 let UI = {
-  view:'loginUnified', adminAuthed:false, currentPerson:null, setupTargetPerson:null, lastSubmittedReq:null,
+  view:'loginUnified', adminAuthed:false, currentPerson:null, setupTargetPerson:null,
   selectedPersonProfileId:null, topbarSearchQuery:'',
   activeTab:'departments', mgrTab:'people', error:'',
-  reqFilter:'pending', penDeptFilter:'all', attDate:null, attDeptFilter:'all',
-  reportMonth:null, reportDept:'all', penaltyReportMonth:null, penaltyReportDept:'all', leaveDept:'all', leaveReportMonth:null, auditFilter:'all'
+  reqFilter:'pending', attDate:null, attDeptFilter:'all',
+  reportMonth:null, reportDept:'all', penaltyReportMonth:null, penaltyReportDept:'all', leaveDept:'all', leaveReportMonth:null
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -276,94 +273,43 @@ function findPersonByLogin(identifier){
   );
 }
 function managerOf(deptId){ return DB.people.find(p=>p.role==='manager' && p.departmentId===deptId); }
-function waLink(phone, text){
-  if(!phone) return null;
-  const clean = phone.replace(/[^\d]/g,'');
-  return "https://wa.me/" + clean + "?text=" + encodeURIComponent(text);
-}
-function notifyPhoneForDept(deptId){
-  const mgr = managerOf(deptId);
-  if(mgr && mgr.phone) return { phone: mgr.phone, title: "مدير القسم (" + mgr.name + ")" };
-  if(DB.adminConfig && DB.adminConfig.phone) return { phone: DB.adminConfig.phone, title: "الأدمن (" + DB.adminConfig.name + ")" };
-  return null;
-}
 
-function generateWhatsAppMessage(r, emp){
-  const info = REQUEST_TYPES[r.type] || { label: r.type };
-  const dName = deptName(emp.departmentId);
-  let timeDetails = '';
-  if(r.type === 'no_fingerprint_in' && r.timeFrom) timeDetails = "\n⏰ وقت الحضور: " + r.timeFrom;
-  else if(r.type === 'no_fingerprint_out' && r.timeTo) timeDetails = "\n⏰ وقت الانصراف: " + r.timeTo;
-  else if(r.timeFrom && r.timeTo) timeDetails = "\n⏰ التوقيت: من " + r.timeFrom + " إلى " + r.timeTo;
-
-  let dateDetails = "📅 التاريخ: " + fmtDate(r.startDate || r.date);
-  if(LEAVE_TYPES[r.type] && r.durationDays > 1){
-    dateDetails = "📅 الفترة: من " + fmtDate(r.startDate || r.date) + " إلى " + fmtDate(r.endDate || r.date) + " (" + r.durationDays + " أيام)";
-  }
-
-  return "السلام عليكم ورحمة الله وبركاته،\n\nطلب اعتماد جديد مرسل من الموظف:\n👤 الاسم: " + emp.name + (emp.code ? " (كود: " + emp.code + ")" : "") + "\n🏢 القسم: " + dName + "\n📋 نوع الطلب: " + info.label + "\n" + dateDetails + timeDetails + "\n📝 السبب: " + r.reason + "\n\n🔗 يرجى مراجعة الطلب واتخاذ القرار (موافقة / رفض) عبر برنامج الحضور والانصراف.";
-}
-
-function saveSession(data){
-  try{ localStorage.setItem('attendance_active_session', JSON.stringify(data)); }catch(e){}
-}
-function clearSession(){
-  try{ localStorage.removeItem('attendance_active_session'); }catch(e){}
-}
+function saveSession(data){ try{ localStorage.setItem('attendance_active_session', JSON.stringify(data)); }catch(e){} }
+function clearSession(){ try{ localStorage.removeItem('attendance_active_session'); }catch(e){} }
 function restoreSession(){
   try{
     const raw = localStorage.getItem('attendance_active_session');
     if(!raw) return false;
     const sess = JSON.parse(raw);
     if(sess.role === 'admin' && DB.adminConfig){
-      UI.adminAuthed = true;
-      UI.currentPerson = null;
-      UI.view = 'adminDashboard';
-      UI.activeTab = 'departments';
-      return true;
+      UI.adminAuthed = true; UI.currentPerson = null; UI.view = 'adminDashboard'; UI.activeTab = 'departments'; return true;
     } else if(sess.role === 'person' && sess.id){
       const p = personById(sess.id);
       if(p && p.password){
         if(p.disabled){ clearSession(); return false; }
         UI.currentPerson = p;
-        if(p.role === 'admin'){
-          UI.adminAuthed = false;
-          UI.view = 'adminDashboard';
-          UI.activeTab = 'departments';
-        } else if(p.role === 'manager'){
-          UI.view = 'managerDashboard';
-          UI.mgrTab = 'people';
-        } else {
-          UI.view = 'employeeDashboard';
-        }
+        if(p.role === 'admin'){ UI.adminAuthed = false; UI.view = 'adminDashboard'; UI.activeTab = 'departments'; }
+        else if(p.role === 'manager'){ UI.view = 'managerDashboard'; UI.mgrTab = 'people'; }
+        else { UI.view = 'employeeDashboard'; }
         return true;
       }
     }
-  }catch(e){ console.warn('Session restore error', e); }
+  }catch(e){}
   return false;
 }
 
 function loadLocalCache(){
   try{
-    const cCfg = localStorage.getItem('attendance_admin_config');
-    if(cCfg) DB.adminConfig = JSON.parse(cCfg);
-    const cDeps = localStorage.getItem('attendance_cache_departments');
-    if(cDeps) DB.departments = JSON.parse(cDeps);
-    const cPeople = localStorage.getItem('attendance_cache_people');
-    if(cPeople) DB.people = JSON.parse(cPeople);
-    const cReqs = localStorage.getItem('attendance_cache_requests');
-    if(cReqs) DB.requests = JSON.parse(cReqs);
-    const cPens = localStorage.getItem('attendance_cache_penalties');
-    if(cPens) DB.penalties = JSON.parse(cPens);
-    const cAtt = localStorage.getItem('attendance_cache_attendance');
-    if(cAtt) DB.attendance = JSON.parse(cAtt);
-    const cJobs = localStorage.getItem('attendance_cache_jobs');
-    if(cJobs) DB.jobTitles = JSON.parse(cJobs);
-    const cLeaves = localStorage.getItem('attendance_cache_leaves');
-    if(cLeaves) DB.leaveBalances = JSON.parse(cLeaves);
-    const cLogs = localStorage.getItem('attendance_cache_logs');
-    if(cLogs) DB.auditLogs = JSON.parse(cLogs);
-  }catch(e){ console.warn('Cache error', e); }
+    const cCfg = localStorage.getItem('attendance_admin_config'); if(cCfg) DB.adminConfig = JSON.parse(cCfg);
+    const cDeps = localStorage.getItem('attendance_cache_departments'); if(cDeps) DB.departments = JSON.parse(cDeps);
+    const cPeople = localStorage.getItem('attendance_cache_people'); if(cPeople) DB.people = JSON.parse(cPeople);
+    const cReqs = localStorage.getItem('attendance_cache_requests'); if(cReqs) DB.requests = JSON.parse(cReqs);
+    const cPens = localStorage.getItem('attendance_cache_penalties'); if(cPens) DB.penalties = JSON.parse(cPens);
+    const cAtt = localStorage.getItem('attendance_cache_attendance'); if(cAtt) DB.attendance = JSON.parse(cAtt);
+    const cJobs = localStorage.getItem('attendance_cache_jobs'); if(cJobs) DB.jobTitles = JSON.parse(cJobs);
+    const cLeaves = localStorage.getItem('attendance_cache_leaves'); if(cLeaves) DB.leaveBalances = JSON.parse(cLeaves);
+    const cLogs = localStorage.getItem('attendance_cache_logs'); if(cLogs) DB.auditLogs = JSON.parse(cLogs);
+  }catch(e){}
 }
 
 function saveLocalCache(){
@@ -380,11 +326,6 @@ function saveLocalCache(){
   }catch(e){}
 }
 
-function isTyping(){
-  const el = document.activeElement;
-  return el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.tagName==='SELECT');
-}
-
 function watchLiveUpdates(){
   if(!db) return;
   const keys = ['departments','people','requests','penalties','attendance','admin_config','leave_balances'];
@@ -395,15 +336,14 @@ function watchLiveUpdates(){
       else if(k==='leave_balances') DB.leaveBalances = doc.data().value ?? {};
       else DB[k] = doc.data().value ?? (k==='attendance' ? {} : []);
       saveLocalCache();
-      if(!isTyping()) render();
-    }, err => console.warn('Live sync notice', err));
+      render();
+    }, err => {});
   });
 }
 
 async function loadAll(){
   UI.attDate = todayStr();
   UI.reportMonth = monthStr();
-  
   loadLocalCache();
   if(!restoreSession()) {
     UI.view = DB.adminConfig ? 'loginUnified' : 'adminSetup';
@@ -412,44 +352,32 @@ async function loadAll(){
 
   if(!firebaseReady) return;
 
-  const safeGet = (key, fallback) => Promise.race([
-    storageGet(key),
-    new Promise(resolve => setTimeout(() => resolve(fallback), 2500))
-  ]).catch(() => fallback);
-
   try {
     const [cfg, deps, people, reqs, pens, att, jobs, leaves, logs] = await Promise.all([
-      safeGet('admin_config', DB.adminConfig),
-      safeGet('departments', DB.departments),
-      safeGet('people', DB.people),
-      safeGet('requests', DB.requests),
-      safeGet('penalties', DB.penalties),
-      safeGet('attendance', DB.attendance),
-      safeGet('job_titles', DB.jobTitles && DB.jobTitles.length ? DB.jobTitles : DEFAULT_JOB_TITLES.slice()),
-      safeGet('leave_balances', DB.leaveBalances),
-      safeGet('audit_logs', DB.auditLogs)
+      storageGet('admin_config'), storageGet('departments'), storageGet('people'),
+      storageGet('requests'), storageGet('penalties'), storageGet('attendance'),
+      storageGet('job_titles'), storageGet('leave_balances'), storageGet('audit_logs')
     ]);
 
     if(cfg) DB.adminConfig = cfg;
-    DB.departments = Array.isArray(deps) ? deps : DB.departments;
-    DB.people = Array.isArray(people) ? people : DB.people;
-    DB.requests = Array.isArray(reqs) ? reqs : DB.requests;
-    DB.penalties = Array.isArray(pens) ? pens : DB.penalties;
-    DB.attendance = att && typeof att === 'object' ? att : DB.attendance;
-    DB.jobTitles = Array.isArray(jobs) && jobs.length ? jobs : (DB.jobTitles.length ? DB.jobTitles : DEFAULT_JOB_TITLES.slice());
-    DB.leaveBalances = leaves && typeof leaves === 'object' ? leaves : DB.leaveBalances;
-    DB.auditLogs = Array.isArray(logs) ? logs : DB.auditLogs;
+    if(deps) DB.departments = deps;
+    if(people) DB.people = people;
+    if(reqs) DB.requests = reqs;
+    if(pens) DB.penalties = pens;
+    if(att) DB.attendance = att;
+    if(jobs && jobs.length) DB.jobTitles = jobs;
+    if(leaves) DB.leaveBalances = leaves;
+    if(logs) DB.auditLogs = logs;
+
+    if(!DB.jobTitles || !DB.jobTitles.length) DB.jobTitles = DEFAULT_JOB_TITLES.slice();
 
     saveLocalCache();
-
     if(!restoreSession()) {
       UI.view = DB.adminConfig ? 'loginUnified' : 'adminSetup';
     }
     render();
     watchLiveUpdates();
-  } catch(e) {
-    console.warn('Sync notice', e);
-  }
+  } catch(e) {}
 }
 
 function saveDepartments(){ saveLocalCache(); return storageSet('departments', DB.departments); }
@@ -461,6 +389,7 @@ function saveAdminConfig(){ saveLocalCache(); return storageSet('admin_config', 
 function saveJobTitles(){ saveLocalCache(); return storageSet('job_titles', DB.jobTitles); }
 function saveLeaveBalances(){ saveLocalCache(); return storageSet('leave_balances', DB.leaveBalances); }
 function saveAuditLogs(){ saveLocalCache(); return storageSet('audit_logs', DB.auditLogs); }
+
 async function audit(action, details){
   const actor = UI.adminAuthed ? (DB.adminConfig?.name||'الأدمن الرئيسي') : (UI.currentPerson?.name||'النظام');
   DB.auditLogs.unshift({id:uid(), action, details, actor, createdAt:new Date().toISOString()});
@@ -469,10 +398,7 @@ async function audit(action, details){
 }
 
 function createAndSaveArabicExcel(wb, sheetName, rows, fileName){
-  if(typeof XLSX === 'undefined'){
-    alert('مكتبة الإكسل غير جاهزة حالياً، يرجى التأكد من اتصال الإنترنت لتنزيل ملفات Excel.');
-    return;
-  }
+  if(typeof XLSX === 'undefined'){ alert('مكتبة الإكسل غير جاهزة حالياً'); return; }
   const ws = XLSX.utils.json_to_sheet(rows && rows.length ? rows : [{'تنبيه': 'لا توجد بيانات'}]);
   ws['!views'] = [{ rightToLeft: true, RTL: true }];
   if(!wb.Workbook) wb.Workbook = {};
@@ -490,7 +416,6 @@ function createAndSaveArabicExcel(wb, sheetName, rows, fileName){
       return { wch: Math.max(maxLen + 6, 15) };
     });
   }
-
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
   XLSX.writeFile(wb, fileName);
 }
@@ -507,10 +432,7 @@ function downloadEmployeeExcelTemplate(){
 
 async function importEmployeesFromExcel(file){
   if(!file) return;
-  if(typeof XLSX === 'undefined'){
-    alert('مكتبة الإكسل غير جاهزة، تأكد من الاتصال بالإنترنت.');
-    return;
-  }
+  if(typeof XLSX === 'undefined'){ alert('مكتبة الإكسل غير جاهزة'); return; }
   const reader = new FileReader();
   reader.onload = async (e) => {
     try {
@@ -520,67 +442,40 @@ async function importEmployeesFromExcel(file){
       const worksheet = workbook.Sheets[firstSheetName];
       const rows = XLSX.utils.sheet_to_json(worksheet);
 
-      if(!rows || rows.length === 0){
-        alert('الملف فارغ أو لا يحتوي على صفوف بيانات صالحة.');
-        return;
-      }
+      if(!rows || rows.length === 0){ alert('الملف فارغ'); return; }
 
-      let addedCount = 0, skippedCount = 0, errors = [];
-
+      let addedCount = 0;
       for(let i = 0; i < rows.length; i++){
         const row = rows[i];
-        const name = (row['الاسم'] || row['اسم الموظف'] || row['Name'] || '') + '';
-        const code = (row['الكود'] || row['الكود الوظيفي'] || row['Code'] || '') + '';
-        const job = (row['الوظيفة'] || row['المسمى الوظيفي'] || row['Job'] || 'موظف') + '';
-        const dept = (row['القسم'] || row['اسم القسم'] || row['Department'] || 'عام') + '';
-        const roleStr = (row['نوع الصلاحية'] || row['الصلاحية'] || row['Role'] || 'موظف') + '';
-        const phone = (row['رقم الواتساب'] || row['الواتساب'] || row['Phone'] || '') + '';
+        const name = (row['الاسم'] || row['اسم الموظف'] || row['Name'] || '').toString().trim();
+        const code = (row['الكود'] || row['الكود الوظيفي'] || row['Code'] || '').toString().trim();
+        const job = (row['الوظيفة'] || row['المسمى الوظيفي'] || 'موظف').toString().trim();
+        const dept = (row['القسم'] || row['اسم القسم'] || 'عام').toString().trim();
+        const roleStr = (row['نوع الصلاحية'] || row['الصلاحية'] || 'موظف').toString().trim();
+        const phone = (row['رقم الواتساب'] || row['الواتساب'] || '').toString().trim();
         const annualBal = parseInt(row['رصيد سنوية'] || row['سنوية'] || 0, 10) || 0;
         const casualBal = parseInt(row['رصيد عارضة'] || row['عارضة'] || 0, 10) || 0;
 
-        const cleanName = name.trim(), cleanCode = code.trim(), cleanDept = dept.trim(), cleanJob = job.trim();
+        if(!name) continue;
 
-        if(!cleanName){ skippedCount++; continue; }
-
-        if(cleanCode && DB.people.some(p => p.code && p.code.toLowerCase() === cleanCode.toLowerCase())){
-          errors.push(`تم تخطي الموظف (${cleanName}) لأن الكود (${cleanCode}) مستخدم مسبقاً.`);
-          skippedCount++;
-          continue;
-        }
-
-        let department = DB.departments.find(d => d.name.trim().toLowerCase() === cleanDept.toLowerCase());
-        if(!department && cleanDept){
-          department = { id: uid(), name: cleanDept };
+        let department = DB.departments.find(d => d.name.trim().toLowerCase() === dept.toLowerCase());
+        if(!department && dept){
+          department = { id: uid(), name: dept };
           DB.departments.push(department);
         }
         const departmentId = department ? department.id : '';
 
-        if(cleanJob && !DB.jobTitles.includes(cleanJob)){
-          DB.jobTitles.push(cleanJob);
-        }
+        if(job && !DB.jobTitles.includes(job)) DB.jobTitles.push(job);
 
         let role = 'employee';
-        if(roleStr.includes('أدمن') || roleStr.includes('ادمن') || roleStr.toLowerCase().includes('admin')){
-          role = 'admin';
-        } else if(roleStr.includes('مدير') || roleStr.toLowerCase().includes('manager')){
-          role = 'manager';
-        }
+        if(roleStr.includes('أدمن') || roleStr.toLowerCase().includes('admin')) role = 'admin';
+        else if(roleStr.includes('مدير') || roleStr.toLowerCase().includes('manager')) role = 'manager';
 
         const newPersonId = uid();
-        const newPerson = {
-          id: newPersonId,
-          name: cleanName,
-          jobTitle: cleanJob || 'موظف',
-          role: role,
-          departmentId: departmentId,
-          password: '',
-          phone: phone.trim(),
-          code: cleanCode,
-          disabled: false,
-          createdAt: new Date().toISOString()
-        };
-
-        DB.people.push(newPerson);
+        DB.people.push({
+          id: newPersonId, name, jobTitle: job, role, departmentId,
+          password: '', phone, code, disabled: false, createdAt: new Date().toISOString()
+        });
 
         if(annualBal > 0 || casualBal > 0){
           DB.leaveBalances[newPersonId] = {
@@ -588,29 +483,13 @@ async function importEmployeesFromExcel(file){
             casual_leave: { allocated: casualBal, used: 0 }
           };
         }
-
         addedCount++;
       }
 
-      await Promise.all([
-        saveDepartments(),
-        savePeople(),
-        saveJobTitles(),
-        saveLeaveBalances()
-      ]);
-
-      await audit('استيراد موظفين من إكسل', `تم استيراد (${addedCount}) موظف بنجاح من ملف الإكسل`);
-
-      let msg = `✅ تم استيراد ${addedCount} موظف بنجاح!`;
-      if(skippedCount > 0) msg += `\n⚠️ تم تخطي ${skippedCount} صف.`;
-      if(errors.length > 0) msg += `\n\nالتفاصيل:\n` + errors.slice(0, 5).join('\n');
-      alert(msg);
-
+      await Promise.all([saveDepartments(), savePeople(), saveJobTitles(), saveLeaveBalances()]);
+      alert(`✅ تم استيراد ${addedCount} موظف بنجاح!`);
       render();
-    } catch(err) {
-      console.error(err);
-      alert('حدث خطأ أثناء قراءة ملف الإكسل: ' + err.message);
-    }
+    } catch(err) { alert('حدث خطأ أثناء قراءة ملف الإكسل: ' + err.message); }
   };
   reader.readAsArrayBuffer(file);
 }
@@ -621,26 +500,18 @@ function exportFullJsonBackup(){
     appName: "سجل الحضور والانصراف",
     version: "2.0",
     data: {
-      adminConfig: DB.adminConfig,
-      departments: DB.departments,
-      people: DB.people,
-      requests: DB.requests,
-      penalties: DB.penalties,
-      attendance: DB.attendance,
-      jobTitles: DB.jobTitles,
-      leaveBalances: DB.leaveBalances,
-      auditLogs: DB.auditLogs
+      adminConfig: DB.adminConfig, departments: DB.departments, people: DB.people,
+      requests: DB.requests, penalties: DB.penalties, attendance: DB.attendance,
+      jobTitles: DB.jobTitles, leaveBalances: DB.leaveBalances, auditLogs: DB.auditLogs
     }
   };
-
   const blob = new Blob([JSON.stringify(fullBackupData, null, 2)], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `نسخة_احتياطية_كاملة_${todayStr()}.json`;
+  a.download = `نسخة_احتياطية_${todayStr()}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  audit('تصدير نسخة احتياطية', 'قام الأدمن بتنزيل نسخة احتياطية كاملة من قاعدة البيانات (JSON)');
 }
 
 async function restoreFromJsonFile(file){
@@ -649,13 +520,8 @@ async function restoreFromJsonFile(file){
   reader.onload = async (e)=>{
     try{
       const parsed = JSON.parse(e.target.result);
-      if(!parsed || !parsed.data){
-        alert('الملف غير صالح، يرجى اختيار ملف نسخة احتياطية صحيح بصيغة .json');
-        return;
-      }
-
-      if(!confirm('⚠️ تحذير هـام: استرجاع النسخة الاحتياطية سيقوم باستبدال كافة البيانات الحالية بالبيانات الموجودة داخل الملف. هل أنت متأكد من المتابعة؟')) return;
-
+      if(!parsed || !parsed.data){ alert('الملف غير صالح'); return; }
+      if(!confirm('استرجاع النسخة سيقوم باستبدال كافة البيانات الحالية بالبيانات الموجودة في الملف. هل تود المتابعة؟')) return;
       const d = parsed.data;
       if(d.departments) DB.departments = d.departments;
       if(d.people) DB.people = d.people;
@@ -668,33 +534,18 @@ async function restoreFromJsonFile(file){
       if(d.auditLogs) DB.auditLogs = d.auditLogs;
 
       await Promise.all([
-        saveDepartments(),
-        savePeople(),
-        saveRequests(),
-        savePenalties(),
-        saveAttendance(),
-        saveJobTitles(),
-        saveLeaveBalances(),
-        saveAdminConfig(),
-        saveAuditLogs()
+        saveDepartments(), savePeople(), saveRequests(), savePenalties(),
+        saveAttendance(), saveJobTitles(), saveLeaveBalances(), saveAdminConfig(), saveAuditLogs()
       ]);
-
-      await audit('استرجاع نسخة احتياطية', `تم استرجاع قاعدة البيانات بنجاح من ملف بتاريخ: ${parsed.exportDate || '—'}`);
-      alert('✅ تم استرجاع كافة البيانات بنجاح ومزامنتها سحابياً!');
+      alert('✅ تم استرجاع كافة البيانات بنجاح!');
       render();
-    } catch(err){
-      console.error(err);
-      alert('حدث خطأ أثناء قراءة ملف النسخة الاحتياطية: ' + err.message);
-    }
+    } catch(err){ alert('حدث خطأ أثناء قراءة الملف: ' + err.message); }
   };
   reader.readAsText(file);
 }
 
 function exportFullExcelBackup(){
-  if(typeof XLSX === 'undefined'){
-    alert('مكتبة الإكسل غير متصلة.');
-    return;
-  }
+  if(typeof XLSX === 'undefined'){ alert('مكتبة الإكسل غير متصلة.'); return; }
   const wb = XLSX.utils.book_new();
   wb.Workbook = { Views: [{ RTL: true }] };
 
@@ -718,58 +569,14 @@ function exportFullExcelBackup(){
   addArabicSheet('الموظفون', DB.people.map(p => ({
     'الكود': p.code || '—', 'الاسم': p.name, 'الوظيفة': p.jobTitle || '—', 'القسم': deptName(p.departmentId),
     'نوع الصلاحية': p.role === 'admin' ? 'أدمن' : p.role === 'manager' ? 'مدير قسم' : 'موظف',
-    'حالة الحساب': p.disabled ? 'معطل' : 'نشط', 'رقم الواتساب': p.phone || '—', 'تاريخ التسجيل': p.createdAt ? p.createdAt.slice(0,10) : '—'
+    'حالة الحساب': p.disabled ? 'معطل' : 'نشط', 'رقم الواتساب': p.phone || '—'
   })));
 
   addArabicSheet('الأقسام', DB.departments.map(d => ({
-    'اسم القسم': d.name, 'مدير القسم': managerOf(d.id)?.name || 'بدون مدير',
-    'عدد الموظفين': DB.people.filter(p => p.departmentId === d.id && p.role === 'employee').length
+    'اسم القسم': d.name, 'مدير القسم': managerOf(d.id)?.name || 'بدون مدير'
   })));
 
-  const attendanceRows = [];
-  Object.keys(DB.attendance).forEach(key => {
-    const splitIdx = key.indexOf('_');
-    if(splitIdx > 0){
-      const empId = key.slice(0, splitIdx);
-      const date = key.slice(splitIdx + 1);
-      const emp = personById(empId);
-      const record = DB.attendance[key];
-      if(emp && (record.checkIn || record.checkOut)){
-        attendanceRows.push({
-          'التاريخ': date, 'اليوم': fmtDate(date), 'الموظف': emp.name, 'الكود': emp.code || '—',
-          'القسم': deptName(emp.departmentId), 'وقت الحضور': record.checkIn || '—', 'وقت الانصراف': record.checkOut || '—'
-        });
-      }
-    }
-  });
-  attendanceRows.sort((a,b) => b['التاريخ'].localeCompare(a['التاريخ']));
-  addArabicSheet('سجل الحضور', attendanceRows);
-
-  addArabicSheet('الطلبات والإجازات', DB.requests.map(r => ({
-    'الموظف': r.empName, 'القسم': deptName(r.departmentId), 'نوع الطلب': REQUEST_TYPES[r.type]?.label || r.type,
-    'عدد الأيام': r.durationDays || 1, 'من تاريخ': r.startDate || r.date, 'إلى تاريخ': r.endDate || r.date,
-    'تاريخ يوم الإجازة المفصل': requestDateLabel(r), 'الحالة': r.status === 'approved' ? 'معتمد' : r.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة',
-    'السبب': r.reason, 'وقت الحضور': r.timeFrom || '—', 'وقت الانصراف': r.timeTo || '—'
-  })).sort((a,b) => b['من تاريخ'].localeCompare(a['من تاريخ'])));
-
-  addArabicSheet('الجزاءات', DB.penalties.map(pn => ({
-    'التاريخ': pn.createdAt.slice(0,10), 'اليوم': fmtDate(pn.createdAt.slice(0,10)), 'الموظف': pn.empName,
-    'القسم': deptName(pn.departmentId), 'نوع الجزاء': PENALTY_TYPES[pn.type]?.label || pn.type,
-    'قيمة الخصم (أيام)': PENALTY_TYPES[pn.type]?.weight || 0, 'السبب': pn.reason, 'بواسطة': pn.appliedByName || '—'
-  })).sort((a,b) => b['التاريخ'].localeCompare(a['التاريخ'])));
-
-  addArabicSheet('أرصدة الإجازات', DB.people.filter(p => p.role === 'employee').map(p => {
-    const a = getLeaveBalance(p, 'annual_leave');
-    const c = getLeaveBalance(p, 'casual_leave');
-    return {
-      'الموظف': p.name, 'الكود': p.code || '—', 'القسم': deptName(p.departmentId),
-      'سنوية (المخصص)': a.isSet ? a.allocated : 'غير محدد', 'سنوية (المستخدم)': a.used, 'سنوية (المتبقي)': a.isSet ? a.remaining : '—',
-      'عارضة (المخصص)': c.isSet ? c.allocated : 'غير محدد', 'عارضة (المستخدم)': c.used, 'عارضة (المتبقي)': c.isSet ? c.remaining : '—'
-    };
-  }));
-
   XLSX.writeFile(wb, `نسخة_شاملة_للنظام_${todayStr()}.xlsx`);
-  audit('تصدير نسخة إكسل شاملة', 'قام الأدمن بتنزيل مصنف إكسل يحتوي على كل بيانات النظام');
 }
 
 function getLeaveBalance(emp, type){
@@ -784,28 +591,11 @@ function getLeaveBalance(emp, type){
   return {allocated, used, remaining:Math.max(0, allocated - used), isSet:true};
 }
 
-function getDeviceId(){
-  let id = localStorage.getItem('attendance_device_id');
-  if(!id){ id = uid()+'-'+uid(); localStorage.setItem('attendance_device_id', id); }
-  return id;
-}
-async function claimDevice(person){
-  if(person.role === 'admin') return true;
-  const deviceId = getDeviceId();
-  if(person.activeDeviceId && person.activeDeviceId !== deviceId) return false;
-  if(!person.activeDeviceId){ person.activeDeviceId=deviceId; person.deviceLinkedAt=new Date().toISOString(); await savePeople(); }
-  return true;
-}
-function resetEmployeeDevice(id){ const p=personById(id); if(p){ delete p.activeDeviceId; delete p.deviceLinkedAt; } }
 function requestDateLabel(r){
   const start=r.startDate||r.date, end=r.endDate||r.date;
   return (!end || start===end) ? fmtDate(start) : (fmtDate(start) + " إلى " + fmtDate(end));
 }
-function calcDaysInclusive(a,b){
-  if(!a||!b) return 1;
-  const x=new Date(a+'T00:00:00'), y=new Date(b+'T00:00:00');
-  return Math.max(1, Math.floor((y-x)/86400000)+1);
-}
+
 function logoSvg(light){
   const c = light ? '#fff' : 'var(--primary)';
   return '<svg width="28" height="28" viewBox="0 0 30 30" fill="none"><rect x="1.5" y="1.5" width="27" height="27" rx="4" stroke="'+c+'" stroke-width="1.6"/><path d="M8 11h14M8 15.5h9" stroke="'+c+'" stroke-width="1.6" stroke-linecap="round"/><path d="M8 20.5l2.4 2.4L15.5 18" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -827,24 +617,22 @@ function renderAdminSetup(){
   return `<div class="center-screen"><div class="panel">
     <h1>إعداد الأدمن الرئيسي</h1><p class="sub">أول مرة يتم فيها فتح السجل</p>
     ${UI.error?`<div class="error-msg">${esc(UI.error)}</div>`:''}
-    <div class="field"><label>اسم الأدمن الرئيسي</label><input id="setupName" type="text" placeholder="مثال: محمد أحمد" autocomplete="off"></div>
-    <div class="field"><label>رقم واتساب (اختياري، للإشعارات)</label><input id="setupPhone" type="text" placeholder="مثال: 201001234567" autocomplete="off"></div>
-    <div class="field"><label>كلمة المرور</label><input id="setupPass" type="password" placeholder="6 أحرف على الأقل" autocomplete="new-password"></div>
-    <div class="field"><label>تأكيد كلمة المرور</label><input id="setupPass2" type="password" autocomplete="new-password"></div>
+    <div class="field"><label>اسم الأدمن الرئيسي</label><input id="setupName" type="text" placeholder="اسم الأدمن"></div>
+    <div class="field"><label>كلمة المرور</label><input id="setupPass" type="password" placeholder="6 أحرف على الأقل"></div>
+    <div class="field"><label>تأكيد كلمة المرور</label><input id="setupPass2" type="password"></div>
     <button class="btn btn-primary btn-block" id="setupSubmit">إنشاء الحساب والبدء</button>
   </div></div>`;
 }
 function attachAdminSetupEvents(){
-  document.getElementById('setupSubmit').onclick = async ()=>{
+  const sub = document.getElementById('setupSubmit');
+  if(sub) sub.onclick = async ()=>{
     const name = document.getElementById('setupName').value.trim();
-    const phone = document.getElementById('setupPhone').value.trim();
     const pass = document.getElementById('setupPass').value;
     const pass2 = document.getElementById('setupPass2').value;
-    if(!name){ UI.error='من فضلك اكتب اسمك'; render(); return; }
+    if(!name){ UI.error='اكتب اسم الأدمن'; render(); return; }
     if(pass.length<6){ UI.error='كلمة المرور يجب ألا تقل عن 6 أحرف'; render(); return; }
     if(pass!==pass2){ UI.error='كلمتا المرور غير متطابقتين'; render(); return; }
-    const newAdmin = { name, phone, password: pass, createdAt:new Date().toISOString() };
-    DB.adminConfig = newAdmin;
+    DB.adminConfig = { name, password: pass, createdAt:new Date().toISOString() };
     await saveAdminConfig();
     saveSession({ role:'admin' });
     UI.adminAuthed=true; UI.error=''; UI.view='adminDashboard'; UI.activeTab='departments'; render();
@@ -854,7 +642,7 @@ function attachAdminSetupEvents(){
 function renderLoginUnified(){
   return `<div class="center-screen"><div class="panel">
     <div class="brandmark">${logoSvg(false)}<span class="brand-title" style="font-size:18px;">سجل الحضور والانصراف</span></div>
-    <p class="sub">تسجيل الدخول للنظام (أدمن / مدير / موظف)</p>
+    <p class="sub">تسجيل الدخول</p>
     ${UI.error?`<div class="error-msg">${esc(UI.error)}</div>`:''}
     <div class="field">
       <label>الاسم أو الكود الوظيفي</label>
@@ -862,11 +650,11 @@ function renderLoginUnified(){
     </div>
     <div class="field" id="uPassWrap">
       <label>كلمة المرور</label>
-      <input id="uPass" type="password" placeholder="كلمة المرور (اتركها فارغة إذا كان دخولك لأول مرة)" autocomplete="current-password">
+      <input id="uPass" type="password" placeholder="كلمة المرور (اتركها فارغة إذا كان دخولك لأول مرة)">
     </div>
     <button class="btn btn-primary btn-block" id="uSubmit">دخول</button>
     <div style="margin-top:14px; text-align:center;">
-      <button class="link-btn" id="firstTimeLoginBtn" style="color:var(--primary); font-size:12px; border-color:var(--border);">دخول لأول مرة؟ اضغط هنا لإنشاء كلمة المرور</button>
+      <button class="link-btn" id="firstTimeLoginBtn" style="color:var(--primary); font-size:12px; border:none; background:transparent; cursor:pointer; text-decoration:underline;">دخول لأول مرة؟ اضغط هنا لإنشاء كلمة المرور</button>
     </div>
   </div></div>`;
 }
@@ -878,11 +666,11 @@ function attachLoginUnifiedEvents(){
   if(firstTimeBtn){
     firstTimeBtn.onclick = ()=>{
       const inputVal = document.getElementById('uInput').value.trim();
-      if(!inputVal){ UI.error = 'اكتب اسمك أو الكود الوظيفي أولاً ثم اضغط على زر إنشاء كلمة المرور'; render(); return; }
+      if(!inputVal){ UI.error = 'اكتب اسمك أو الكود أولاً'; render(); return; }
       const p = findPersonByLogin(inputVal);
-      if(!p){ UI.error = 'لم يتم العثور على موظف بهذا الاسم أو الكود. تواصل مع الأدمن لإضافتك.'; render(); return; }
-      if(p.disabled){ UI.error = 'تم تعطيل هذا الحساب من قبل الإدارة. يرجى مراجعة المسؤول.'; render(); return; }
-      if(p.password){ UI.error = 'هذا الحساب لديه كلمة مرور بالفعل! أدخل كلمة المرور للدخول.'; render(); return; }
+      if(!p){ UI.error = 'لم يتم العثور على هذا الحساب.'; render(); return; }
+      if(p.disabled){ UI.error = 'تم تعطيل هذا الحساب من قبل الإدارة.'; render(); return; }
+      if(p.password){ UI.error = 'هذا الحساب لديه كلمة مرور بالفعل! أدخلها للدخول.'; render(); return; }
       UI.setupTargetPerson = p; UI.error = ''; UI.view = 'empSetPassword'; render();
     };
   }
@@ -891,7 +679,7 @@ function attachLoginUnifiedEvents(){
   const submit = async ()=>{
     const inputVal = document.getElementById('uInput').value.trim();
     const pass = document.getElementById('uPass').value;
-    if(!inputVal){ UI.error='من فضلك أدخل الاسم أو الكود الوظيفي'; render(); return; }
+    if(!inputVal){ UI.error='من فضلك أدخل الاسم أو الكود'; render(); return; }
 
     const mainAdminName = DB.adminConfig?.name?.trim().toLowerCase();
     if((mainAdminName && inputVal.toLowerCase() === mainAdminName) || inputVal.toLowerCase() === 'admin'){
@@ -909,11 +697,10 @@ function attachLoginUnifiedEvents(){
 
     const p = findPersonByLogin(inputVal);
     if(p){
-      if(p.disabled){ UI.error = 'تم تعطيل هذا الحساب من قبل الإدارة. يرجى مراجعة المسؤول.'; render(); return; }
+      if(p.disabled){ UI.error = 'تم تعطيل هذا الحساب من قبل الإدارة.'; render(); return; }
       if(!p.password){ UI.setupTargetPerson = p; UI.error = ''; UI.view = 'empSetPassword'; render(); return; }
 
       if(p.password === pass){
-        if(!(await claimDevice(p))){ UI.error='هذا الحساب مرتبط بجهاز آخر. تواصل مع الإدارة لفتح جهاز جديد.'; render(); return; }
         saveSession({ role:'person', id: p.id });
         UI.currentPerson = p;
         UI.error = '';
@@ -937,29 +724,15 @@ function renderEmpSetPassword(){
   const p = UI.setupTargetPerson;
   return `<div class="center-screen"><div class="panel">
     <div class="brandmark">${logoSvg(false)}<span class="brand-title" style="font-size:18px;">إنشاء كلمة مرور جديدة</span></div>
-    <p class="sub">مرحباً بك يا <strong>${esc(p?.name||'')}</strong>، قم بإنشاء كلمة المرور الخاصة بك</p>
+    <p class="sub">مرحباً بك يا <strong>${esc(p?.name||'')}</strong></p>
     ${UI.error?`<div class="error-msg">${esc(UI.error)}</div>`:''}
-    <div class="field">
-      <label>كلمة المرور الجديدة</label>
-      <input id="newEmpPass" type="password" placeholder="اكتب كلمة مرور قوية (4 أحرف/أرقام على الأقل)" autofocus autocomplete="new-password">
-    </div>
-    <div class="field">
-      <label>تأكيد كلمة المرور</label>
-      <input id="newEmpPass2" type="password" placeholder="أعد كتابة كلمة المرور" autocomplete="new-password">
-    </div>
-    <button class="btn btn-primary btn-block" id="empPassSubmit">حفظ والدخول للبرنامج</button>
-    <div style="margin-top:12px; text-align:center;">
-      <button class="link-btn" id="cancelSetPassBtn" style="color:var(--ink-soft); font-size:12px;">رجوع لتسجيل الدخول</button>
-    </div>
+    <div class="field"><label>كلمة المرور الجديدة</label><input id="newEmpPass" type="password" placeholder="4 خانات على الأقل" autofocus></div>
+    <div class="field"><label>تأكيد كلمة المرور</label><input id="newEmpPass2" type="password"></div>
+    <button class="btn btn-primary btn-block" id="empPassSubmit">حفظ والدخول</button>
   </div></div>`;
 }
 
 function attachEmpSetPasswordEvents(){
-  const cancelBtn = document.getElementById('cancelSetPassBtn');
-  if(cancelBtn){
-    cancelBtn.onclick = ()=>{ UI.setupTargetPerson = null; UI.error = ''; UI.view = 'loginUnified'; render(); };
-  }
-
   const submitBtn = document.getElementById('empPassSubmit');
   if(!submitBtn) return;
   submitBtn.onclick = async ()=>{
@@ -967,15 +740,11 @@ function attachEmpSetPasswordEvents(){
     const pass2 = document.getElementById('newEmpPass2').value;
     const p = UI.setupTargetPerson;
     if(!p){ UI.view = 'loginUnified'; render(); return; }
-
-    if(!pass || pass.length < 4){ UI.error = 'كلمة المرور يجب ألا تقل عن 4 أحرف أو أرقام'; render(); return; }
+    if(!pass || pass.length < 4){ UI.error = 'كلمة المرور لا تقل عن 4 خانات'; render(); return; }
     if(pass !== pass2){ UI.error = 'كلمتا المرور غير متطابقتين'; render(); return; }
 
     p.password = pass;
-    p.passwordSetAt = new Date().toISOString();
     await savePeople();
-    await audit('إنشاء كلمة مرور', `قام ${p.name} بإنشاء كلمة المرور الخاصة به`);
-
     saveSession({ role:'person', id: p.id });
     UI.currentPerson = p; UI.setupTargetPerson = null; UI.error = '';
     if(p.role === 'admin'){ UI.adminAuthed = false; UI.view = 'adminDashboard'; UI.activeTab = 'departments'; }
@@ -988,96 +757,42 @@ function attachEmpSetPasswordEvents(){
 function openPersonProfile(personId){
   UI.selectedPersonProfileId = personId;
   UI.view = 'personProfile';
-  UI.topbarSearchQuery = '';
   render();
 }
 
 function renderPersonProfile(){
   const p = personById(UI.selectedPersonProfileId);
-  if(!p){
-    return `<div class="center-screen"><div class="panel"><h1>لم يتم العثور على الموظف</h1><button class="btn btn-primary btn-block" id="backFromProfile">رجوع</button></div></div>`;
-  }
+  if(!p) return `<div class="center-screen"><div class="panel"><h1>لم يتم العثور على الموظف</h1><button class="btn btn-primary btn-block" id="backFromProfile">رجوع</button></div></div>`;
 
-  const deptMgr = p.departmentId ? managerOf(p.departmentId) : null;
   const annualBal = getLeaveBalance(p, 'annual_leave');
   const casualBal = getLeaveBalance(p, 'casual_leave');
-
-  const empReqs = DB.requests.filter(r => r.empId === p.id).sort((a,b)=> b.createdAt.localeCompare(a.createdAt));
-  const empPens = DB.penalties.filter(pn => pn.empId === p.id).sort((a,b)=> b.createdAt.localeCompare(a.createdAt));
-  const penaltyDaysTotal = empPens.reduce((sum, pn) => sum + (PENALTY_TYPES[pn.type]?.weight || 0), 0);
-
-  const attEntries = Object.keys(DB.attendance).filter(k => k.startsWith(p.id + '_')).map(k => DB.attendance[k]);
-  const presentCount = attEntries.filter(a => a.checkIn).length;
-
-  const reqRows = empReqs.map(r => {
-    const stampClass = r.status==='approved'?'stamp-approved':r.status==='rejected'?'stamp-rejected':'stamp-pending';
-    const stampText = r.status==='approved'?'معتمد':r.status==='rejected'?'مرفوض':'قيد المراجعة';
-    const info = REQUEST_TYPES[r.type] || { label: r.type };
-    return `<div class="ledger-row">
-      <div class="row-main"><div class="name">${esc(info.label)} — ${requestDateLabel(r)}</div><div class="meta">${esc(r.reason)}</div></div>
-      <div class="row-actions"><span class="stamp ${stampClass}">${stampText}</span></div>
-    </div>`;
-  }).join('');
-
-  const penRows = empPens.map(pn => {
-    const info = PENALTY_TYPES[pn.type] || { label: pn.type };
-    return `<div class="ledger-row">
-      <div class="row-main"><div class="name">${esc(info.label)} (خصم ${info.weight || 0} يوم) — ${fmtDate(pn.createdAt.slice(0,10))}</div><div class="meta">السبب: ${esc(pn.reason)} · بواسطة: ${esc(pn.appliedByName)}</div></div>
-      <div class="row-actions">
-        <span class="stamp stamp-penalty">${esc(info.label)}</span>
-        ${(UI.adminAuthed || UI.currentPerson?.role==='admin') ? `<button class="btn btn-danger btn-sm" data-delete-penalty="${pn.id}">حذف</button>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
   const isAdmin = UI.adminAuthed || (UI.currentPerson && UI.currentPerson.role==='admin');
-  const isAdminOrMgr = isAdmin || (UI.currentPerson && UI.currentPerson.role==='manager');
 
   return `<div style="display:flex; flex-direction:column; min-height:100vh;">
-    ${topbar(`الملف الشخصي للموظف — ${esc(p.name)}`, 'admin')}
+    ${topbar(`الملف الشخصي — ${esc(p.name)}`, 'admin')}
     <div class="content">
       <div style="margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-        <button class="btn btn-outline btn-sm" id="backFromProfile">← رجوع للوحة التحكم</button>
+        <button class="btn btn-outline btn-sm" id="backFromProfile">← رجوع</button>
         <div style="display:flex; gap:8px;">
-          ${isAdmin ? `<button class="btn ${p.disabled?'btn-success':'btn-warning'} btn-sm" data-toggle-status="${p.id}">${p.disabled?'✅ إعادة تشغيل الحساب':'⛔ تعطيل الحساب'}</button>` : ''}
-          ${isAdminOrMgr ? `<button class="btn btn-outline btn-sm" data-edit-leave="${p.id}">تعديل رصيد الإجازات</button>` : ''}
+          ${isAdmin ? `<button class="btn ${p.disabled?'btn-success':'btn-warning'} btn-sm" data-toggle-status="${p.id}">${p.disabled?'إعادة تشغيل الحساب':'تعطيل الحساب'}</button>` : ''}
+          ${isAdmin ? `<button class="btn btn-outline btn-sm" data-edit-leave="${p.id}">تعديل رصيد الإجازات (أدمن فقط)</button>` : ''}
+          ${isAdmin ? `<button class="btn btn-outline btn-sm" data-reset-pass="${p.id}">تغيير كلمة المرور</button>` : ''}
         </div>
       </div>
 
-      <div class="profile-header">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
-          <div>
-            <h1 style="font-size:22px; color:var(--primary); margin:0 0 6px;">
-              ${esc(p.name)} 
-              ${p.disabled ? '<span class="chip chip-disabled">الحساب معطل حالياً</span>' : '<span class="chip" style="color:var(--success); border-color:var(--success);">حساب نشط</span>'}
-            </h1>
-            <div style="color:var(--ink-soft); font-size:13.5px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-              <span>الوظيفة: <strong>${esc(p.jobTitle || 'غير محدد')}</strong></span>
-              <span>·</span>
-              <span>القسم: <strong class="chip chip-dept">${esc(deptName(p.departmentId))}</strong></span>
-              <span>·</span>
-              <span>الكود: <strong class="chip chip-code">${esc(p.code || 'بدون كود')}</strong></span>
-            </div>
-          </div>
-          <div style="text-align:left;">
-            <div style="font-size:12px; color:var(--ink-soft);">المدير المباشر</div>
-            <div style="font-size:14.5px; font-weight:700; color:var(--manager);">${esc(deptMgr ? deptMgr.name : 'لا يوجد')}</div>
-          </div>
+      <div class="today-card" style="text-align:right;">
+        <h1 style="font-size:20px; color:var(--primary); margin:0 0 6px;">${esc(p.name)} ${p.disabled ? '<span class="chip chip-disabled">معطل</span>' : '<span class="chip" style="color:var(--success);">نشط</span>'}</h1>
+        <div style="color:var(--ink-soft); font-size:13px; display:flex; gap:10px; flex-wrap:wrap;">
+          <span>الوظيفة: <strong>${esc(p.jobTitle || 'موظف')}</strong></span>
+          <span>القسم: <strong class="chip chip-dept">${esc(deptName(p.departmentId))}</strong></span>
+          <span>الكود: <strong class="chip chip-code">${esc(p.code || 'بدون')}</strong></span>
         </div>
       </div>
 
       <div class="profile-stats-grid">
-        <div class="stat-card"><div class="num" style="color:var(--success);">${annualBal.isSet ? `${annualBal.remaining}/${annualBal.allocated}` : '—'}</div><div class="lbl">رصيد الإجازة السنوية المتبقي</div></div>
-        <div class="stat-card"><div class="num" style="color:var(--manager);">${casualBal.isSet ? `${casualBal.remaining}/${casualBal.allocated}` : '—'}</div><div class="lbl">رصيد الإجازة العارضة المتبقي</div></div>
-        <div class="stat-card"><div class="num" style="color:var(--danger);">${penaltyDaysTotal}</div><div class="lbl">إجمالي أيام الخصم والجزاءات</div></div>
-        <div class="stat-card"><div class="num">${presentCount}</div><div class="lbl">إجمالي أيام الحضور المسجلة</div></div>
+        <div class="stat-card"><div class="num" style="color:var(--success);">${annualBal.isSet ? `${annualBal.remaining}/${annualBal.allocated}` : '—'}</div><div class="lbl">رصيد السنوية المتبقي</div></div>
+        <div class="stat-card"><div class="num" style="color:var(--manager);">${casualBal.isSet ? `${casualBal.remaining}/${casualBal.allocated}` : '—'}</div><div class="lbl">رصيد العارضة المتبقي</div></div>
       </div>
-
-      <div class="section-head"><h2>سجل الجزاءات والخصومات</h2><span class="count">${empPens.length} جزاء</span></div>
-      <div class="ledger" style="margin-bottom:24px;">${penRows || '<div class="empty-illustration">لا توجد جزاءات مسجلة على هذا الموظف</div>'}</div>
-
-      <div class="section-head"><h2>سجل الطلبات والإجازات والأذونات</h2><span class="count">${empReqs.length} طلب</span></div>
-      <div class="ledger">${reqRows || '<div class="empty-illustration">لا توجد طلبات مسجلة لهذا الموظف</div>'}</div>
     </div>
   </div>`;
 }
@@ -1085,39 +800,39 @@ function renderPersonProfile(){
 function attachPersonProfileEvents(){
   attachTopbarSearchEvents();
   attachLogout();
-
   const backBtn = document.getElementById('backFromProfile');
   if(backBtn){
     backBtn.onclick = ()=>{
-      if(UI.adminAuthed || UI.currentPerson?.role === 'admin'){ UI.view = 'adminDashboard'; }
-      else if(UI.currentPerson?.role === 'manager'){ UI.view = 'managerDashboard'; }
-      else { UI.view = 'employeeDashboard'; }
+      if(UI.adminAuthed || UI.currentPerson?.role === 'admin') UI.view = 'adminDashboard';
+      else if(UI.currentPerson?.role === 'manager') UI.view = 'managerDashboard';
+      else UI.view = 'employeeDashboard';
       render();
     };
   }
 
+  const isAdmin = UI.adminAuthed || (UI.currentPerson && UI.currentPerson.role==='admin');
+
   document.querySelectorAll('[data-toggle-status]').forEach(b=>{
     b.onclick = async ()=>{
+      if(!isAdmin) return;
       const p = personById(b.dataset.toggleStatus);
       if(!p) return;
-      const willDisable = !p.disabled;
-      const actionText = willDisable ? 'تعطيل حساب' : 'إعادة تشغيل حساب';
-      if(!confirm(`هل أنت متأكد من ${actionText} الموظف (${p.name})؟`)) return;
-      p.disabled = willDisable;
+      p.disabled = !p.disabled;
       await savePeople();
-      await audit(`${actionText}`, `قام الأدمن بـ ${actionText} للموظف ${p.name}`);
       render();
     };
   });
 
-  document.querySelectorAll('[data-delete-penalty]').forEach(b=>{
+  document.querySelectorAll('[data-reset-pass]').forEach(b=>{
     b.onclick = async ()=>{
-      const penId = b.dataset.deletePenalty;
-      const pen = DB.penalties.find(p=>p.id===penId);
-      if(!pen || !confirm(`هل أنت متأكد من حذف هذا الجزاء؟`)) return;
-      DB.penalties = DB.penalties.filter(p=>p.id!==penId);
-      await savePenalties();
-      await audit('حذف جزاء', `قام المسؤول بحذف جزاء مسجل على ${pen.empName}`);
+      if(!isAdmin) return;
+      const p = personById(UI.selectedPersonProfileId);
+      if(!p) return;
+      const np = prompt(`أدخل كلمة المرور الجديدة للموظف (${p.name}):`, '');
+      if(!np || np.trim().length < 4){ alert('يجب ألا تقل كلمة المرور عن 4 خانات'); return; }
+      p.password = np.trim();
+      await savePeople();
+      alert('✅ تم تحديث كلمة المرور بنجاح');
       render();
     };
   });
@@ -1125,13 +840,14 @@ function attachPersonProfileEvents(){
   const editLeaveBtn = document.querySelector('[data-edit-leave]');
   if(editLeaveBtn){
     editLeaveBtn.onclick = async ()=>{
+      if(!isAdmin) return;
       const p = personById(UI.selectedPersonProfileId);
       if(!p) return;
       const a = getLeaveBalance(p, 'annual_leave');
       const c = getLeaveBalance(p, 'casual_leave');
-      const av = prompt(`حدد إجمالي رصيد الإجازة السنوية للموظف (${p.name}):`, a.isSet ? a.allocated : '');
+      const av = prompt(`رصيد السنوية لـ (${p.name}):`, a.isSet ? a.allocated : '');
       if(av === null) return;
-      const cv = prompt(`حدد إجمالي رصيد الإجازة العارضة للموظف (${p.name}):`, c.isSet ? c.allocated : '');
+      const cv = prompt(`رصيد العارضة لـ (${p.name}):`, c.isSet ? c.allocated : '');
       if(cv === null) return;
 
       DB.leaveBalances[p.id] = {
@@ -1139,7 +855,6 @@ function attachPersonProfileEvents(){
         casual_leave: { allocated: Math.max(0, parseInt(cv,10)||0), used: c.used }
       };
       await saveLeaveBalances();
-      await audit('تعديل رصيد إجازات', `تم تعديل رصيد إجازات ${p.name}`);
       render();
     };
   }
@@ -1148,7 +863,7 @@ function attachPersonProfileEvents(){
 function topbar(whoText, typeClass){
   const isAdmin = UI.adminAuthed || (UI.currentPerson && UI.currentPerson.role==='admin');
   const showSearch = isAdmin || (UI.currentPerson && UI.currentPerson.role==='manager');
-  
+
   let searchDropdownHtml = '';
   if(UI.topbarSearchQuery && UI.topbarSearchQuery.trim().length >= 1){
     const q = UI.topbarSearchQuery.trim().toLowerCase();
@@ -1182,6 +897,9 @@ function topbar(whoText, typeClass){
     </div>
   ` : '';
 
+  const userObj = UI.currentPerson;
+  const userCodeBadge = userObj && userObj.code ? ` <span class="who-code-badge">#${esc(userObj.code)}</span>` : '';
+
   return `<div class="topbar ${typeClass||''}">
     <div class="topbar-right">
       <div class="brand">${logoSvg(true)}<span class="brand-title">سجل الحضور</span></div>
@@ -1189,7 +907,7 @@ function topbar(whoText, typeClass){
     </div>
     <div class="topbar-actions">
       ${isAdmin ? `<button class="link-btn link-btn-accent" id="quickBackupBtn" title="تنزيل نسخة احتياطية فورية لقاعدة البيانات">💾 نسخة احتياطية</button>` : ''}
-      <span class="who">${esc(whoText)}</span>
+      <span class="who">${esc(whoText)}${userCodeBadge}</span>
       <button class="link-btn" id="logoutBtn">تسجيل الخروج</button>
     </div>
   </div>`;
@@ -1217,20 +935,27 @@ function attachTopbarSearchEvents(){
 }
 
 function attachLogout(){
-  document.getElementById('logoutBtn').onclick = ()=>{
-    clearSession();
-    UI.adminAuthed=false; UI.currentPerson=null; UI.view='loginUnified'; UI.error=''; render();
-  };
+  const logoutBtn = document.getElementById('logoutBtn');
+  if(logoutBtn){
+    logoutBtn.onclick = ()=>{
+      clearSession();
+      UI.adminAuthed = false;
+      UI.currentPerson = null;
+      UI.view = 'loginUnified';
+      UI.error = '';
+      render();
+    };
+  }
 }
 
 function renderAdminDashboard(){
   const pending = DB.requests.filter(r=>r.status==='pending').length;
   const adminName = UI.adminAuthed ? (DB.adminConfig?.name||'الأدمن الرئيسي') : `${UI.currentPerson?.name} (أدمن)`;
   return `<div style="display:flex; flex-direction:column; min-height:100vh;">
-    ${topbar(`لوحة التحكم والإدارة — ${esc(adminName)}`, 'admin')}
+    ${topbar(`لوحة التحكم — ${esc(adminName)}`, 'admin')}
     <div class="tabs">
       <button class="tab-btn ${UI.activeTab==='departments'?'active':''}" data-tab="departments">الأقسام</button>
-      <button class="tab-btn ${UI.activeTab==='people'?'active':''}" data-tab="people">المستخدمين والصلاحيات</button>
+      <button class="tab-btn ${UI.activeTab==='people'?'active':''}" data-tab="people">الموظفين والصلاحيات</button>
       <button class="tab-btn ${UI.activeTab==='jobs'?'active':''}" data-tab="jobs">الوظائف</button>
       <button class="tab-btn ${UI.activeTab==='leaveBalances'?'active':''}" data-tab="leaveBalances">أرصدة الإجازات</button>
       <button class="tab-btn ${UI.activeTab==='leaveReport'?'active':''}" data-tab="leaveReport">تقرير الإجازات</button>
@@ -1238,9 +963,9 @@ function renderAdminDashboard(){
       <button class="tab-btn ${UI.activeTab==='penalties'?'active':''}" data-tab="penalties">الجزاءات</button>
       <button class="tab-btn ${UI.activeTab==='penaltyReport'?'active':''}" data-tab="penaltyReport">تقرير الجزاءات</button>
       <button class="tab-btn ${UI.activeTab==='attendance'?'active':''}" data-tab="attendance">الحضور اليومي</button>
-      <button class="tab-btn ${UI.activeTab==='reports'?'active':''}" data-tab="reports">التقارير الشهرية</button>
+      <button class="tab-btn ${UI.activeTab==='reports'?'active':''}" data-tab="reports">التقرير الشهري</button>
       <button class="tab-btn ${UI.activeTab==='backup'?'active':''}" data-tab="backup">النسخ الاحتياطي</button>
-      <button class="tab-btn ${UI.activeTab==='audit'?'active':''}" data-tab="audit">سجل التعديلات</button>
+      <button class="tab-btn ${UI.activeTab==='audit'?'active':''}" data-tab="audit">سجل العمليات</button>
     </div>
     <div class="content">
       ${UI.activeTab==='departments' ? renderDepartmentsTab() : ''}
@@ -1263,529 +988,157 @@ function renderDepartmentsTab(){
   const rows = DB.departments.map(d=>{
     const mgr = managerOf(d.id);
     const empCount = DB.people.filter(p=>p.departmentId===d.id && p.role==='employee').length;
-    return `<div class="ledger-row">
-      <div class="row-main"><div class="name">${esc(d.name)}</div><div class="meta">${mgr? 'المدير: '+esc(mgr.name) : 'بدون مدير معيّن'} · ${empCount} موظف</div></div>
-      <div class="row-actions"><button class="btn btn-danger btn-sm" data-remove-dept="${d.id}">حذف</button></div>
-    </div>`;
+    return `<div class="ledger-row"><div class="row-main"><div class="name">${esc(d.name)}</div><div class="meta">${mgr? 'المدير: '+esc(mgr.name) : 'بدون مدير'} · ${empCount} موظف</div></div><div class="row-actions"><button class="btn btn-danger btn-sm" data-remove-dept="${d.id}">حذف</button></div></div>`;
   }).join('');
-  return `
-  <div class="section-head"><h2>الأقسام</h2><span class="count">${DB.departments.length} قسم</span></div>
-  <div class="form-card"><h3>إضافة قسم جديد</h3>
-    <div class="form-row"><div class="field"><label>اسم القسم</label><input id="newDeptName" type="text" placeholder="مثال: قسم المبيعات" autocomplete="off"></div></div>
-    ${UI.error?`<div class="error-msg">${esc(UI.error)}</div>`:''}
-    <button class="btn btn-primary" id="addDeptBtn">إضافة القسم</button>
-  </div>
-  <div class="ledger">${rows || `<div class="empty-illustration">لسه ما تمّش إضافة أي قسم</div>`}</div>`;
+  return `<div class="section-head"><h2>الأقسام</h2><span class="count">${DB.departments.length}</span></div>
+  <div class="form-card"><h3>إضافة قسم جديد</h3><div class="form-row"><div class="field"><input id="newDeptName" type="text" placeholder="اسم القسم" autocomplete="off"></div></div><button class="btn btn-primary" id="addDeptBtn">إضافة القسم</button></div>
+  <div class="ledger">${rows || '<div class="empty-illustration">لا توجد أقسام</div>'}</div>`;
 }
 
 function renderPeopleTab(isAdmin, deptScopeId){
   const scoped = isAdmin ? DB.people : DB.people.filter(p=>p.departmentId===deptScopeId && p.role==='employee');
-
   const rows = scoped.map(p=>{
-    const today = todayStr();
-    const att = DB.attendance[p.id+'_'+today];
-    const status = att?.checkIn ? `حاضر منذ ${att.checkIn}` : 'لم يسجل حضور اليوم';
-    let roleBadge = p.role === 'admin' ? '<span class="chip chip-admin">أدمن</span>' : p.role === 'manager' ? '<span class="chip chip-mgr">مدير قسم</span>' : '<span class="chip">موظف</span>';
-    const disabledBadge = p.disabled ? '<span class="chip chip-disabled">معطل</span>' : '';
-    const passStatus = p.password ? `<span style="color:var(--success); font-size:11px;">(تم تعيين كلمة المرور)</span>` : `<span style="color:var(--danger); font-size:11px;">(في انتظار إنشاء كلمة المرور)</span>`;
-
-    return `<div class="ledger-row ${p.disabled ? 'disabled-emp' : ''}">
-      <div class="row-main">
-        <div class="name clickable" data-open-profile="${p.id}" title="اضغط لفتح الملف الشامل للموظف">
-          ${esc(p.name)} 🔍 ${roleBadge} ${disabledBadge} ${passStatus}
-        </div>
-        <div class="meta">${esc(p.jobTitle||'')} · <span class="chip chip-dept">${esc(deptName(p.departmentId))}</span>
-          ${p.code ? `<span class="chip chip-code">كود: ${esc(p.code)}</span>` : `<span class="chip" style="color:var(--danger);">بدون كود</span>`}
-          ${p.role==='employee'?`· ${status}`:''}</div>
-      </div>
-      <div class="row-actions">
-        <button class="btn btn-outline btn-sm" data-open-profile="${p.id}">الملف الشامل</button>
-        ${isAdmin ? `<button class="btn ${p.disabled?'btn-success':'btn-warning'} btn-sm" data-toggle-status="${p.id}">${p.disabled?'تشغيل':'تعطيل'}</button>` : ''}
-        ${isAdmin ? `<button class="btn btn-outline btn-sm" data-change-role="${p.id}">تغيير الصلاحية</button>` : ''}
-        <button class="btn btn-outline btn-sm" data-edit-person="${p.id}">تعديل البيانات</button>
-        ${isAdmin ? `<button class="btn btn-outline btn-sm" data-set-code="${p.id}">${p.code?'تعديل الكود':'إدخال الكود'}</button>` : ''}
-        ${isAdmin ? `<button class="btn btn-outline btn-sm" data-reset-pass="${p.id}">${p.password?'تغيير كلمة المرور':'تعيين كلمة مرور'}</button>` : ''}
-        ${isAdmin && p.password ? `<button class="btn btn-outline btn-sm" data-clear-pass="${p.id}" style="color:var(--accent);">إلغاء كلمة المرور</button>` : ''}
-        <button class="btn btn-danger btn-sm" data-remove-person="${p.id}">حذف</button>
-      </div>
-    </div>`;
+    let roleBadge = p.role === 'admin' ? '<span class="chip chip-admin">أدمن</span>' : p.role === 'manager' ? '<span class="chip chip-mgr">مدير</span>' : '<span class="chip">موظف</span>';
+    return `<div class="ledger-row ${p.disabled?'disabled-emp':''}"><div class="row-main"><div class="name clickable" data-open-profile="${p.id}">${esc(p.name)} 🔍 ${roleBadge}</div><div class="meta">${esc(p.jobTitle||'')} · ${esc(deptName(p.departmentId))} · كود: ${esc(p.code||'بدون')}</div></div>
+    <div class="row-actions">
+      <button class="btn btn-outline btn-sm" data-open-profile="${p.id}">الملف</button>
+      ${isAdmin ? `<button class="btn btn-outline btn-sm" data-set-code="${p.id}">${p.code?'تعديل الكود':'إدخال الكود'}</button>` : ''}
+      ${isAdmin ? `<button class="btn btn-outline btn-sm" data-reset-pass-quick="${p.id}">كلمة المرور</button>` : ''}
+      ${isAdmin ? `<button class="btn btn-outline btn-sm" data-change-role="${p.id}">الصلاحية</button>` : ''}
+      ${isAdmin ? `<button class="btn btn-danger btn-sm" data-remove-person="${p.id}">حذف</button>` : ''}
+    </div></div>`;
   }).join('');
-
-  const deptOptions = (isAdmin ? DB.departments : DB.departments.filter(d=>d.id===deptScopeId))
-    .map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+  const deptOptions = DB.departments.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
 
   return `
   <div class="section-head">
-    <h2>${isAdmin?'المستخدمين والصلاحيات':'موظفين قسمي'}</h2>
+    <h2>الموظفون</h2>
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
       <span class="count">${scoped.length} شخص</span>
       ${isAdmin ? `
-        <button class="btn btn-outline btn-sm" id="downloadEmpTemplateBtn" title="تنزيل ملف إكسل فارغ معبأ بنماذج لإدخال الموظفين">📥 تنزيل نموذج الإكسل</button>
+        <button class="btn btn-outline btn-sm" id="downloadEmpTemplateBtn" title="تنزيل نموذج ملف Excel">📥 تنزيل نموذج الإكسل</button>
         <input type="file" id="importEmpExcelInput" accept=".xlsx, .xls, .csv" style="display:none;">
         <button class="btn btn-success btn-sm" id="triggerImportEmpBtn">📊 استيراد موظفين من ملف Excel</button>
       ` : ''}
     </div>
   </div>
-
-  <div class="form-card"><h3>إضافة ${isAdmin?'مستخدم / موظف جديد':'موظف جديد'}</h3>
+  ${isAdmin ? `
+  <div class="form-card"><h3>إضافة موظف جديد يدوياً</h3>
     <div class="form-row">
       <div class="field"><label>الاسم</label><input id="newPName" type="text" placeholder="اسم الموظف" autocomplete="off"></div>
-      <div class="field"><label>الكود الوظيفي (إلزامي للتعريف)</label><input id="newPCode" type="text" placeholder="مثال: 101" autocomplete="off"></div>
-      <div class="field"><label>الوظيفة</label><select id="newPJob">${(DB.jobTitles||DEFAULT_JOB_TITLES).map(j=>`<option value="${esc(j)}">${esc(j)}</option>`).join('')}<option value="__custom__">وظيفة أخرى...</option></select></div>
+      <div class="field"><label>الكود</label><input id="newPCode" type="text" placeholder="مثال: 101" autocomplete="off"></div>
+      <div class="field"><label>الوظيفة</label><select id="newPJob">${DB.jobTitles.map(j=>`<option value="${esc(j)}">${esc(j)}</option>`).join('')}</select></div>
     </div>
     <div class="form-row">
-      ${isAdmin ? `
-        <div class="field">
-          <label>نوع الحساب والصلاحية</label>
-          <select id="newPRole">
-            <option value="employee">موظف عادي</option>
-            <option value="manager">مدير قسم</option>
-            <option value="admin">أدمن (مسؤول بصلاحية كاملة)</option>
-          </select>
-        </div>` : ''}
-      <div class="field"><label>القسم</label><select id="newPDept">${deptOptions || '<option value="">لا يوجد أقسام بعد</option>'}</select></div>
-      <div class="field"><label>رقم واتساب (اختياري للإشعارات)</label><input id="newPPhone" type="text" placeholder="201001234567" autocomplete="off"></div>
+      <div class="field"><label>الصلاحية</label><select id="newPRole"><option value="employee">موظف</option><option value="manager">مدير قسم</option><option value="admin">أدمن</option></select></div>
+      <div class="field"><label>القسم</label><select id="newPDept">${deptOptions || '<option value="">لا توجد أقسام</option>'}</select></div>
     </div>
-    ${UI.error?`<div class="error-msg">${esc(UI.error)}</div>`:''}
     <button class="btn btn-primary" id="addPersonBtn">إضافة الموظف</button>
-  </div>
-  <div class="ledger">${rows || `<div class="empty-illustration">لا يوجد موظفون مسجلون بعد</div>`}</div>`;
+  </div>` : ''}
+  <div class="ledger">${rows || '<div class="empty-illustration">لا يوجد موظفون</div>'}</div>`;
 }
 
 function renderJobsTab(){
-  const rows=(DB.jobTitles||[]).map((j,i)=>`<div class="ledger-row"><div class="row-main"><div class="name">${esc(j)}</div></div><div class="row-actions"><button class="btn btn-danger btn-sm" data-remove-job="${i}">حذف</button></div></div>`).join('');
-  return `<div class="section-head"><h2>الوظائف</h2><span class="count">${(DB.jobTitles||[]).length} وظيفة</span></div><div class="form-card"><h3>إضافة وظيفة جديدة</h3><div class="form-row"><div class="field"><label>اسم الوظيفة</label><input id="newJobTitle" type="text" placeholder="مثال: مدير حسابات" autocomplete="off"></div></div><button class="btn btn-primary" id="addJobBtn">إضافة الوظيفة</button></div><div class="ledger">${rows||'<div class="empty-illustration">لا توجد وظائف مضافة</div>'}</div>`;
+  const rows = DB.jobTitles.map((j,i)=>`<div class="ledger-row"><div class="row-main"><div class="name">${esc(j)}</div></div><div class="row-actions"><button class="btn btn-danger btn-sm" data-remove-job="${i}">حذف</button></div></div>`).join('');
+  return `<div class="section-head"><h2>الوظائف</h2></div><div class="form-card"><h3>إضافة وظيفة</h3><div class="form-row"><div class="field"><input id="newJobTitle" type="text" placeholder="اسم الوظيفة"></div></div><button class="btn btn-primary" id="addJobBtn">إضافة</button></div><div class="ledger">${rows}</div>`;
 }
-function attachJobsEvents(){
-  document.getElementById('addJobBtn').onclick=async()=>{const v=document.getElementById('newJobTitle').value.trim(); if(!v)return; if(!DB.jobTitles.includes(v))DB.jobTitles.push(v); await saveJobTitles(); render();};
-  document.querySelectorAll('[data-remove-job]').forEach(b=>b.onclick=async()=>{const j=DB.jobTitles[+b.dataset.removeJob]; if(!j||!confirm('حذف الوظيفة من قائمة الاختيارات؟'))return; DB.jobTitles.splice(+b.dataset.removeJob,1); await saveJobTitles(); render();});
+
+function renderLeaveBalancesTab(isAdmin, deptScopeId){
+  const people = DB.people.filter(p=>p.role==='employee' && (isAdmin || p.departmentId===deptScopeId));
+  const rows = people.map(p=>{
+    const a = getLeaveBalance(p, 'annual_leave');
+    const c = getLeaveBalance(p, 'casual_leave');
+    return `<div class="ledger-row"><div class="row-main"><div class="name">${esc(p.name)}</div><div class="meta">سنوية: ${a.remaining}/${a.allocated} | عارضة: ${c.remaining}/${c.allocated}</div></div>
+    <div class="row-actions">${isAdmin ? `<button class="btn btn-outline btn-sm" data-edit-leave="${p.id}">تعديل الرصيد (أدمن)</button>` : ''}</div></div>`;
+  }).join('');
+  return `<div class="section-head"><h2>أرصدة الإجازات</h2></div><div class="ledger">${rows || '<div class="empty-illustration">لا توجد بيانات</div>'}</div>`;
 }
 
 function renderRequestsTab(isAdmin, deptScopeId){
-  const filters = [['pending','قيد المراجعة'],['approved','تمت الموافقة'],['rejected','مرفوضة'],['all','الكل']];
-  let list = DB.requests.filter(r => isAdmin ? true : r.departmentId===deptScopeId);
-  list = list.filter(r => UI.reqFilter==='all' ? true : r.status===UI.reqFilter);
-  list = list.slice().sort((a,b)=> b.createdAt.localeCompare(a.createdAt));
-
+  const list = DB.requests.filter(r=>isAdmin ? true : (r.departmentId===deptScopeId && r.empId!==UI.currentPerson?.id));
   const rows = list.map(r=>{
-    const stampClass = r.status==='approved'?'stamp-approved':r.status==='rejected'?'stamp-rejected':'stamp-pending';
-    const stampText = r.status==='approved'?'معتمد':r.status==='rejected'?'مرفوض':'قيد المراجعة';
-    const typeInfo = REQUEST_TYPES[r.type] || { label:r.type };
-
-    return `<div class="ledger-row">
-      <div class="row-main">
-        <div class="name clickable" data-open-profile="${r.empId}" title="اضغط لفتح الملف الشامل للموظف">${esc(r.empName)} 🔍 — ${esc(typeInfo.label)} ${isAdmin?`<span class="chip chip-dept">${esc(deptName(r.departmentId))}</span>`:''}</div>
-        <div class="meta">بتاريخ ${requestDateLabel(r)}${r.durationDays>1?` · ${r.durationDays} يوم`:''} · السبب: ${esc(r.reason)}</div>
-      </div>
-      <div class="row-actions">
-        <span class="stamp ${stampClass}">${stampText}</span>
-        ${r.status==='pending' ? `<button class="btn btn-success btn-sm" data-approve="${r.id}">موافقة</button><button class="btn btn-danger btn-sm" data-reject="${r.id}">رفض</button>` : ''}
-      </div>
-    </div>`;
+    return `<div class="ledger-row"><div class="row-main"><div class="name">${esc(r.empName)} — ${REQUEST_TYPES[r.type]?.label||r.type}</div><div class="meta">${r.reason}</div></div><div class="row-actions"><span class="stamp ${r.status==='approved'?'stamp-approved':'stamp-pending'}">${r.status==='approved'?'معتمد':'قيد المراجعة'}</span>${r.status==='pending'?`<button class="btn btn-success btn-sm" data-approve="${r.id}">موافقة</button><button class="btn btn-danger btn-sm" data-reject="${r.id}">رفض</button>`:''}</div></div>`;
   }).join('');
-
-  return `
-  <div class="section-head"><h2>طلبات الإذن</h2><span class="count">${list.length} طلب</span></div>
-  <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
-    ${filters.map(([k,l])=>`<button class="btn ${UI.reqFilter===k?'btn-primary':'btn-outline'} btn-sm" data-filter="${k}">${l}</button>`).join('')}
-  </div>
-  <div class="ledger">${rows || `<div class="empty-illustration">لا توجد طلبات في هذا التصنيف</div>`}</div>`;
+  return `<div class="section-head"><h2>الطلبات</h2></div><div class="ledger">${rows || '<div class="empty-illustration">لا توجد طلبات</div>'}</div>`;
 }
 
 function renderPenaltiesTab(isAdmin, deptScopeId){
   const scopedPeople = isAdmin ? DB.people.filter(p=>p.role==='employee') : DB.people.filter(p=>p.departmentId===deptScopeId && p.role==='employee');
-  let list = DB.penalties.filter(pn => isAdmin ? true : pn.departmentId===deptScopeId);
-  list = list.slice().sort((a,b)=> b.createdAt.localeCompare(a.createdAt));
-
-  const rows = list.map(pn=>{
-    const info = PENALTY_TYPES[pn.type] || { label: pn.type };
-    return `<div class="ledger-row">
-      <div class="row-main">
-        <div class="name clickable" data-open-profile="${pn.empId}" title="اضغط لفتح الملف الشامل للموظف">${esc(pn.empName)} 🔍 ${isAdmin?`<span class="chip chip-dept">${esc(deptName(pn.departmentId))}</span>`:''}</div>
-        <div class="meta">السبب: ${esc(pn.reason)} · بواسطة ${esc(pn.appliedByName)} · ${fmtDate(pn.createdAt.slice(0,10))}</div>
-      </div>
-      <div class="row-actions">
-        <span class="stamp stamp-penalty">${esc(info.label)}</span>
-        ${isAdmin ? `<button class="btn btn-danger btn-sm" data-delete-penalty="${pn.id}">حذف الجزاء</button>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
-  const peopleOptions = scopedPeople.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
-  const typeOptions = Object.entries(PENALTY_TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
-
-  return `
-  <div class="section-head"><h2>الجزاءات</h2><span class="count">${list.length} جزاء</span></div>
-  <div class="form-card"><h3>إضافة جزاء</h3>
+  const list = DB.penalties.filter(pn=>isAdmin ? true : pn.departmentId===deptScopeId);
+  const rows = list.map(pn=>`<div class="ledger-row"><div class="row-main"><div class="name">${esc(pn.empName)} — ${PENALTY_TYPES[pn.type]?.label}</div><div class="meta">${pn.reason} · بواسطة: ${esc(pn.appliedByName)}</div></div></div>`).join('');
+  return `<div class="section-head"><h2>الجزاءات</h2><span class="count">${list.length}</span></div>
+  <div class="form-card"><h3>إضافة جزاء جديد</h3>
     <div class="form-row">
-      <div class="field"><label>الموظف</label><select id="penEmp">${peopleOptions || '<option value="">لا يوجد موظفون</option>'}</select></div>
-      <div class="field"><label>نوع الجزاء</label><select id="penType">${typeOptions}</select></div>
+      <div class="field"><label>الموظف</label><select id="penEmp">${scopedPeople.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
+      <div class="field"><label>نوع الجزاء</label><select id="penType">${Object.entries(PENALTY_TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
     </div>
     <div class="field"><label>سبب الجزاء</label><textarea id="penReason" placeholder="اكتب سبب الجزاء"></textarea></div>
-    ${UI.error?`<div class="error-msg">${esc(UI.error)}</div>`:''}
     <button class="btn btn-primary" id="addPenBtn">تسجيل الجزاء</button>
   </div>
-  <div class="ledger">${rows || `<div class="empty-illustration">لا توجد جزاءات مسجّلة</div>`}</div>`;
+  <div class="ledger">${rows || '<div class="empty-illustration">لا توجد جزاءات مسجلة</div>'}</div>`;
 }
 
 function renderAttendanceTab(isAdmin, deptScopeId){
   const date = UI.attDate || todayStr();
-  const scoped = isAdmin
-    ? DB.people.filter(p=> UI.attDeptFilter==='all' || p.departmentId===UI.attDeptFilter)
-    : DB.people.filter(p=>p.departmentId===deptScopeId);
-  const employees = scoped.filter(p=>p.role==='employee');
-
+  const employees = DB.people.filter(p=>p.role==='employee' && (isAdmin || p.departmentId===deptScopeId));
   const rows = employees.map(e=>{
-    const att = DB.attendance[e.id+'_'+date];
-    let stampClass, stampText, meta;
-    if(att && att.checkIn){
-      const isLate = att.checkIn > '09:30';
-      stampClass = isLate ? 'stamp-rejected' : 'stamp-approved';
-      stampText = isLate ? 'متأخر' : 'حاضر';
-      meta = `دخول ${att.checkIn}${att.checkOut ? ' · انصراف '+att.checkOut : ''}`;
-    } else if(date <= todayStr()){
-      stampClass='stamp-rejected'; stampText='غائب'; meta='لا يوجد تسجيل حضور';
-    } else { stampClass='stamp-pending'; stampText='—'; meta='لم يحن الموعد بعد'; }
-
-    return `<div class="ledger-row">
-      <div class="row-main">
-        <div class="name clickable" data-open-profile="${e.id}" title="اضغط لفتح الملف الشامل للموظف">${esc(e.name)} 🔍 ${isAdmin?`<span class="chip chip-dept">${esc(deptName(e.departmentId))}</span>`:''}</div>
-        <div class="meta">${meta}</div>
-      </div>
-      <div class="row-actions"><span class="stamp ${stampClass}">${stampText}</span></div>
-    </div>`;
+    const att = DB.attendance[e.id+'_'+date] || {};
+    return `<div class="ledger-row"><div class="row-main"><div class="name">${esc(e.name)}</div><div class="meta">دخول: ${att.checkIn||'—'} | انصراف: ${att.checkOut||'—'}</div></div></div>`;
   }).join('');
-
-  const deptFilterHtml = isAdmin ? `
-    <select class="date-picker" id="attDeptFilter" style="margin-inline-start:8px;">
-      <option value="all" ${UI.attDeptFilter==='all'?'selected':''}>كل الأقسام</option>
-      ${DB.departments.map(d=>`<option value="${d.id}" ${UI.attDeptFilter===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}
-    </select>` : '';
-
-  return `
-  <div class="section-head"><h2>حالة الحضور</h2>
-    <div><input type="date" class="date-picker" id="attDatePick" value="${date}">${deptFilterHtml}</div>
-  </div>
-  <div style="margin-bottom:12px; color:var(--ink-soft); font-size:13px;">${fmtDate(date)}</div>
-  <div class="ledger">${employees.length ? rows : `<div class="empty-illustration">لا يوجد موظفون بعد</div>`}</div>`;
-}
-
-function computeReportRows(month, deptScopeId, isAdmin){
-  const employees = DB.people.filter(p=>{
-    if(p.role!=='employee') return false;
-    if(!isAdmin) return p.departmentId===deptScopeId;
-    return UI.reportDept==='all' || p.departmentId===UI.reportDept;
-  });
-  return employees.map(e=>{
-    const attKeys = Object.keys(DB.attendance).filter(k=>k.startsWith(e.id+'_') && k.slice(e.id.length+1).startsWith(month));
-    const presentDays = attKeys.filter(k=>DB.attendance[k].checkIn).length;
-    const lateDays = attKeys.filter(k=>DB.attendance[k].checkIn > '09:30').length;
-    const monthReqs = DB.requests.filter(r=>r.empId===e.id && r.date.startsWith(month) && r.status==='approved');
-    const reqCounts = {};
-    Object.keys(REQUEST_TYPES).forEach(t=> reqCounts[t] = monthReqs.filter(r=>r.type===t).length);
-    const monthPens = DB.penalties.filter(pn=>pn.empId===e.id && pn.createdAt.slice(0,7)===month);
-    const penaltyDaysTotal = monthPens.reduce((sum,pn)=> sum + (PENALTY_TYPES[pn.type]?.weight||0), 0);
-    const deptMgr = e.departmentId ? managerOf(e.departmentId) : null;
-    return {
-      'الاسم': e.name, 'القسم': deptName(e.departmentId), 'مدير القسم': deptMgr ? deptMgr.name : '—', 'الكود': e.code||'—',
-      'أيام الحضور': presentDays, 'أيام التأخير': lateDays,
-      ...Object.fromEntries(Object.entries(REQUEST_TYPES).map(([k,v])=>[v.label, reqCounts[k]])),
-      'عدد الجزاءات': monthPens.length, 'إجمالي أيام الجزاء': penaltyDaysTotal
-    };
-  });
-}
-function computePenaltyReportRows(month, deptScopeId, isAdmin){
-  return DB.penalties.filter(p=>{
-    if(!isAdmin && p.departmentId!==deptScopeId) return false;
-    if(isAdmin && UI.penaltyReportDept!=='all' && p.departmentId!==UI.penaltyReportDept) return false;
-    return !month || p.createdAt.slice(0,7)===month;
-  }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(p=>({
-    '_id': p.id,
-    'التاريخ':p.createdAt.slice(0,10), 'اليوم':fmtDate(p.createdAt.slice(0,10)), 'الموظف':p.empName, 'القسم':deptName(p.departmentId),
-    'نوع الجزاء':PENALTY_TYPES[p.type]?.label||p.type, 'قيمة الجزاء (أيام)':PENALTY_TYPES[p.type]?.weight||0,
-    'السبب':p.reason, 'بواسطة':p.appliedByName||'—'
-  }));
-}
-function renderPenaltyReportTab(isAdmin, deptScopeId){
-  const month=UI.penaltyReportMonth||monthStr(), rows=computePenaltyReportRows(month,deptScopeId,isAdmin);
-  const deptFilter=isAdmin?`<select class="date-picker" id="penaltyReportDeptFilter"><option value="all">كل الأقسام</option>${DB.departments.map(d=>`<option value="${d.id}" ${UI.penaltyReportDept===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>`:'';
-  const cols=['التاريخ','اليوم','الموظف','القسم','نوع الجزاء','قيمة الجزاء (أيام)','السبب','بواسطة'];
-  return `<div class="section-head"><h2>تقرير الجزاءات التفصيلي</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><input type="month" class="date-picker" id="penaltyReportMonthPick" value="${month}">${deptFilter}<button class="btn btn-outline btn-sm" id="downloadPenaltyReportBtn">تنزيل Excel (عربي RTL)</button></div></div><div class="table-scroll"><table class="report-table"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}${isAdmin?'<th>إجراء</th>':''}</tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(r[c])}</td>`).join('')}${isAdmin?`<td><button class="btn btn-danger btn-sm" data-delete-penalty="${r._id}">حذف</button></td>`:''}</tr>`).join(''):`<tr><td colspan="${cols.length+(isAdmin?1:0)}">لا توجد جزاءات لهذا الشهر</td></tr>`} </tbody></table></div>`;
-}
-function attachPenaltyReportEvents(isAdmin,deptScopeId){
-  document.getElementById('penaltyReportMonthPick').onchange=e=>{UI.penaltyReportMonth=e.target.value;render();};
-  const df=document.getElementById('penaltyReportDeptFilter'); if(df)df.onchange=e=>{UI.penaltyReportDept=e.target.value;render();};
-  document.getElementById('downloadPenaltyReportBtn').onclick=()=>{
-    const rows=computePenaltyReportRows(UI.penaltyReportMonth||monthStr(),deptScopeId,isAdmin).map(({_id, ...rest})=>rest);
-    if(!rows.length){alert('لا يوجد جزاءات لهذا الشهر');return;}
-    const wb = XLSX.utils.book_new();
-    createAndSaveArabicExcel(wb, 'تقرير الجزاءات', rows, `تقرير-الجزاءات-${UI.penaltyReportMonth||monthStr()}.xlsx`);
-  };
-  
-  if(isAdmin){
-    document.querySelectorAll('[data-delete-penalty]').forEach(b=>{
-      b.onclick = async ()=>{
-        const penId = b.dataset.deletePenalty;
-        const pen = DB.penalties.find(p=>p.id===penId);
-        if(!pen || !confirm(`هل أنت متأكد من حذف هذا الجزاء المسجل على الموظف (${pen.empName})؟`)) return;
-        DB.penalties = DB.penalties.filter(p=>p.id!==penId);
-        await savePenalties();
-        await audit('حذف جزاء', `قام الأدمن بحذف جزاء (${PENALTY_TYPES[pen.type]?.label||pen.type}) المسجل على ${pen.empName}`);
-        render();
-      };
-    });
-  }
+  return `<div class="section-head"><h2>الحضور اليومي</h2><input type="date" class="date-picker" id="attDatePick" value="${date}"></div><div class="ledger">${rows}</div>`;
 }
 
 function renderReportsTab(isAdmin, deptScopeId){
   const month = UI.reportMonth || monthStr();
-  const rows = computeReportRows(month, deptScopeId, isAdmin);
-  const cols = rows[0] ? Object.keys(rows[0]) : ['الاسم','القسم','مدير القسم','الكود','أيام الحضور','أيام التأخير','عدد الجزاءات','إجمالي أيام الجزاء'];
-
-  const deptFilterHtml = isAdmin ? `
-    <select class="date-picker" id="reportDeptFilter" style="margin-inline-start:8px;">
-      <option value="all" ${UI.reportDept==='all'?'selected':''}>كل الأقسام</option>
-      ${DB.departments.map(d=>`<option value="${d.id}" ${UI.reportDept===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}
-    </select>` : '';
-
-  return `
-  <div class="section-head"><h2>التقرير الشهري</h2>
+  return `<div class="section-head"><h2>التقرير الشهري</h2>
     <div style="display:flex; align-items:center; gap:8px;">
       <input type="month" class="date-picker" id="reportMonthPick" value="${month}">
-      ${deptFilterHtml}
-      <button class="btn btn-outline btn-sm" id="downloadReportBtn">تنزيل Excel (عربي RTL)</button>
+      <button class="btn btn-outline btn-sm" id="downloadReportBtn">تنزيل Excel</button>
     </div>
-  </div>
-  <div class="table-scroll">
-    <table class="report-table"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead>
-    <tbody>${rows.length ? rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(r[c])}</td>`).join('')}</tr>`) : `<tr><td colspan="${cols.length}">لا يوجد موظفون في هذا النطاق</td></tr>`} </tbody></table>
-  </div>`;
+  </div><div class="info-msg">تقارير الحضور والإجازات والجزاءات.</div>`;
 }
 
-function attachReportsEvents(isAdmin, deptScopeId){
-  document.getElementById('reportMonthPick').onchange = e=>{ UI.reportMonth=e.target.value; render(); };
-  const df = document.getElementById('reportDeptFilter'); if(df) df.onchange = e=>{ UI.reportDept=e.target.value; render(); };
-  document.getElementById('downloadReportBtn').onclick = ()=>{
-    const rows = computeReportRows(UI.reportMonth||monthStr(), deptScopeId, isAdmin);
-    if(!rows.length){ alert('لا يوجد بيانات لهذا الشهر'); return; }
-    const wb = XLSX.utils.book_new();
-    createAndSaveArabicExcel(wb, 'التقرير الشهري', rows, `تقرير-${UI.reportMonth||monthStr()}.xlsx`);
-  };
+function renderPenaltyReportTab(){
+  return `<div class="section-head"><h2>تقرير الجزاءات التفصيلي</h2><button class="btn btn-outline btn-sm" id="downloadPenaltyReportBtn">تنزيل Excel</button></div><div class="info-msg">بيان تفصيلي بخصومات وجزاءات الموظفين.</div>`;
 }
 
-function renderLeaveBalancesTab(isAdmin, deptScopeId){
-  const people = DB.people.filter(p=>p.role==='employee' && (isAdmin || p.departmentId===deptScopeId) && (isAdmin ? (UI.leaveDept==='all'||p.departmentId===UI.leaveDept) : true));
-  const deptFilter = isAdmin ? `<select class="date-picker" id="leaveDeptFilter"><option value="all">كل الأقسام</option>${DB.departments.map(d=>`<option value="${d.id}" ${UI.leaveDept===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>` : '';
-  
-  const rows = people.map(p=>{
-    const a = getLeaveBalance(p,'annual_leave');
-    const c = getLeaveBalance(p,'casual_leave');
-    const aText = a.isSet ? `سنوية: ${a.remaining}/${a.allocated} متبقي` : `<span style="color:var(--danger)">سنوية: لم يحدد رصيد</span>`;
-    const cText = c.isSet ? `عارضة: ${c.remaining}/${c.allocated} متبقي` : `<span style="color:var(--danger)">عارضة: لم يحدد رصيد</span>`;
-    return `<div class="ledger-row ${p.disabled ? 'disabled-emp' : ''}">
-      <div class="row-main">
-        <div class="name clickable" data-open-profile="${p.id}" title="اضغط لفتح الملف الشامل للموظف">
-          ${esc(p.name)} 🔍 ${p.disabled ? '<span class="chip chip-disabled">معطل</span>' : ''} <span class="chip chip-dept">${esc(deptName(p.departmentId))}</span>
-        </div>
-        <div class="meta">${aText} · ${cText}</div>
-      </div>
-      <div class="row-actions">
-        <button class="btn btn-outline btn-sm" data-open-profile="${p.id}">الملف الشامل</button>
-        <button class="btn btn-outline btn-sm" data-edit-leave="${p.id}">تحديد/تعديل الرصيد</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  return `
-  <div class="section-head"><h2>أرصدة الإجازات</h2><div>${deptFilter}</div></div>
-  <div class="ledger">${rows || '<div class="empty-illustration">لا يوجد موظفون</div>'}</div>`;
-}
-
-function attachLeaveBalancesEvents(isAdmin, deptScopeId){
-  const f = document.getElementById('leaveDeptFilter'); 
-  if(f) f.onchange = e=>{ UI.leaveDept=e.target.value; render(); };
-  
-  document.querySelectorAll('[data-edit-leave]').forEach(b=>{
-    b.onclick = async ()=>{
-      const p = personById(b.dataset.editLeave);
-      if(!p) return;
-      const a = getLeaveBalance(p, 'annual_leave');
-      const c = getLeaveBalance(p, 'casual_leave');
-      const av = prompt(`حدد إجمالي رصيد الإجازة السنوية للموظف (${p.name}):`, a.isSet ? a.allocated : '');
-      if(av === null) return;
-      const cv = prompt(`حدد إجمالي رصيد الإجازة العارضة للموظف (${p.name}):`, c.isSet ? c.allocated : '');
-      if(cv === null) return;
-
-      DB.leaveBalances[p.id] = {
-        annual_leave: { allocated: Math.max(0, parseInt(av, 10) || 0), used: a.used },
-        casual_leave: { allocated: Math.max(0, parseInt(cv, 10) || 0), used: c.used }
-      };
-
-      await saveLeaveBalances();
-      await audit('تحديد رصيد إجازات', `تم تحديد رصيد الإجازات لـ ${p.name}`);
-      render();
-    };
-  });
-}
-
-function computeLeaveReportRows(month,deptScopeId,isAdmin){
-  return DB.requests.filter(r=>r.status==='approved' && LEAVE_TYPES[r.type] && (!month||String(r.startDate||r.date).startsWith(month)) && (isAdmin?(UI.leaveDept==='all'||r.departmentId===UI.leaveDept):r.departmentId===deptScopeId))
-    .map(r=>{
-      const deptMgr = r.departmentId ? managerOf(r.departmentId) : null;
-      return {
-        '_id': r.id,
-        'empId': r.empId,
-        'الموظف': r.empName,
-        'القسم': deptName(r.departmentId),
-        'مدير القسم': deptMgr ? deptMgr.name : '—',
-        'نوع الإجازة': LEAVE_TYPES[r.type].label,
-        'عدد الأيام': r.durationDays || 1,
-        'من تاريخ': r.startDate || r.date,
-        'إلى تاريخ': r.endDate || r.date,
-        'تاريخ يوم الإجازة': requestDateLabel(r),
-        'السبب': r.reason
-      };
-    }).sort((a,b)=>b['من تاريخ'].localeCompare(a['من تاريخ']));
-}
-
-function renderLeaveReportTab(isAdmin,deptScopeId){
-  const month=UI.leaveReportMonth||monthStr(), rows=computeLeaveReportRows(month,deptScopeId,isAdmin), cols=['الموظف','القسم','مدير القسم','نوع الإجازة','عدد الأيام','من تاريخ','إلى تاريخ','تاريخ يوم الإجازة','السبب'];
-  const df=isAdmin?`<select class="date-picker" id="leaveReportDeptFilter"><option value="all">كل الأقسام</option>${DB.departments.map(d=>`<option value="${d.id}" ${UI.leaveDept===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>`:'';
-  return `<div class="section-head"><h2>تقرير الإجازات المفصل</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><input type="month" class="date-picker" id="leaveReportMonthPick" value="${month}">${df}<button class="btn btn-outline btn-sm" id="downloadLeaveReportBtn">تنزيل Excel (عربي RTL)</button></div></div>
-  <div class="table-scroll"><table class="report-table"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}${isAdmin?'<th>إجراء</th>':''}</tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${cols.map(c=>`<td>${c==='الموظف'?`<span class="clickable" data-open-profile="${r.empId}">${esc(r[c])} 🔍</span>`:esc(r[c])}</td>`).join('')}${isAdmin?`<td><button class="btn btn-danger btn-sm" data-delete-leave-req="${r._id}">حذف الإجازة</button></td>`:''}</tr>`).join(''):`<tr><td colspan="${cols.length+(isAdmin?1:0)}">لا توجد إجازات لهذا الشهر</td></tr>`} </tbody></table></div>`;
-}
-
-function attachLeaveReportEvents(isAdmin,deptScopeId){
-  const m=document.getElementById('leaveReportMonthPick'); if(m)m.onchange=e=>{UI.leaveReportMonth=e.target.value;render();};
-  const d=document.getElementById('leaveReportDeptFilter'); if(d)d.onchange=e=>{UI.leaveDept=e.target.value;render();};
-  const b=document.getElementById('downloadLeaveReportBtn');
-  if(b) b.onclick=()=>{
-    const rows=computeLeaveReportRows(UI.leaveReportMonth||monthStr(),deptScopeId,isAdmin).map(({_id, empId, ...rest})=>rest);
-    if(!rows.length){alert('لا توجد إجازات لهذا الشهر');return;}
-    const wb = XLSX.utils.book_new();
-    createAndSaveArabicExcel(wb, 'تقرير الإجازات', rows, `تقرير-الإجازات-${UI.leaveReportMonth||monthStr()}.xlsx`);
-  };
-
-  if(isAdmin){
-    document.querySelectorAll('[data-delete-leave-req]').forEach(b=>{
-      b.onclick = async ()=>{
-        const reqId = b.dataset.deleteLeaveReq;
-        const req = DB.requests.find(r=>r.id===reqId);
-        if(!req || !confirm(`هل أنت متأكد من حذف هذه الإجازة الخاصة بالموظف (${req.empName})؟`)) return;
-
-        if(LEAVE_TYPES[req.type] && req.empId){
-          const emp = personById(req.empId);
-          if(emp && DB.leaveBalances[emp.id] && DB.leaveBalances[emp.id][req.type]){
-            const currentUsed = Number(DB.leaveBalances[emp.id][req.type].used || 0);
-            const daysToRestore = Number(req.durationDays || 1);
-            DB.leaveBalances[emp.id][req.type].used = Math.max(0, currentUsed - daysToRestore);
-            await saveLeaveBalances();
-          }
-        }
-
-        DB.requests = DB.requests.filter(r=>r.id!==reqId);
-        await saveRequests();
-        await audit('حذف إجازة من التقرير', `قام الأدمن بحذف إجازة لـ ${req.empName}`);
-        render();
-      };
-    });
-  }
+function renderLeaveReportTab(){
+  return `<div class="section-head"><h2>تقرير الإجازات التفصيلي</h2><button class="btn btn-outline btn-sm" id="downloadLeaveReportBtn">تنزيل Excel</button></div><div class="info-msg">بيان تفصيلي بإجازات الموظفين المعتمدة.</div>`;
 }
 
 function renderBackupTab(){
-  return `
-  <div class="section-head"><h2>إدارة النسخ الاحتياطي واستعادة البيانات</h2></div>
+  return `<div class="section-head"><h2>إدارة النسخ الاحتياطي</h2></div>
   <div class="backup-card">
-    <h3 style="margin:0 0 8px; color:var(--primary); font-size:16px;">تأمين واسترجاع بيانات المنظومة</h3>
     <div class="backup-options">
-      <div class="backup-box" style="border:1.5px solid var(--primary);">
-        <div>
-          <h4>🔄 استرجاع البيانات من نسخة احتياطية (Restore)</h4>
-          <p>اختر ملف النسخة الاحتياطية (.json) الذي قمت بتنزيله سابقاً لاستعادة كافة البيانات فوراً.</p>
-        </div>
+      <div class="backup-box">
+        <h4>استرجاع البيانات من نسخة (Restore)</h4>
         <input type="file" id="importJsonFileInput" accept=".json" style="display:none;">
-        <button class="btn btn-primary btn-block" id="triggerImportBtn">📥 اختيار ملف واسترجاع البيانات الآن</button>
+        <button class="btn btn-primary btn-block" id="triggerImportBtn">📥 استرجاع ملف JSON</button>
       </div>
-
       <div class="backup-box">
-        <div>
-          <h4>💾 تنزيل نسخة احتياطية رقمية (JSON Backup)</h4>
-          <p>تنزيل ملف رقمي شامل لقاعدة البيانات.</p>
-        </div>
-        <button class="btn btn-outline" id="exportJsonBtn">💾 تنزيل نسخة شاملة (JSON)</button>
+        <h4>تنزيل نسخة احتياطية رقمية</h4>
+        <button class="btn btn-outline btn-block" id="exportJsonBtn">💾 تنزيل ملف JSON</button>
       </div>
-
       <div class="backup-box">
-        <div>
-          <h4>📊 تنزيل مصنف إكسل شامل (Excel RTL)</h4>
-          <p>تنزيل ملف إكسل منسق عربي بالكامل.</p>
-        </div>
-        <button class="btn btn-success" id="exportExcelBtn">📊 تنزيل مصنف شامل (Excel)</button>
+        <h4>تنزيل ملف إكسل شامل للنظام</h4>
+        <button class="btn btn-success btn-block" id="exportFullExcelBtn">📊 تنزيل مصنف Excel</button>
       </div>
     </div>
   </div>`;
 }
 
-function attachBackupEvents(){
-  const jsonBtn = document.getElementById('exportJsonBtn');
-  if(jsonBtn) jsonBtn.onclick = () => exportFullJsonBackup();
-
-  const excelBtn = document.getElementById('exportExcelBtn');
-  if(excelBtn) excelBtn.onclick = () => exportFullExcelBackup();
-
-  const triggerBtn = document.getElementById('triggerImportBtn');
-  const fileInput = document.getElementById('importJsonFileInput');
-
-  if(triggerBtn && fileInput){
-    triggerBtn.onclick = () => fileInput.click();
-    fileInput.onchange = (e) => {
-      const file = e.target.files[0];
-      if(file) restoreFromJsonFile(file);
-      fileInput.value = '';
-    };
-  }
-}
-
 function renderAuditTab(){
-  const rows=DB.auditLogs.slice(0,200).map(x=>`<div class="ledger-row"><div class="row-main"><div class="name">${esc(x.action)}</div><div class="meta">${esc(x.details)} · بواسطة ${esc(x.actor)} · ${new Date(x.createdAt).toLocaleString('ar-EG')}</div></div></div>`).join('');
-  return `<div class="section-head"><h2>سجل التعديلات والعمليات</h2><span class="count">${DB.auditLogs.length}</span></div><div class="ledger">${rows||'<div class="empty-illustration">لا توجد عمليات مسجلة</div>'}</div>`;
+  const rows = DB.auditLogs.slice(0, 100).map(x=>`<div class="ledger-row"><div class="row-main"><div class="name">${esc(x.action)}</div><div class="meta">${esc(x.details)} · بواسطة: ${esc(x.actor)} · ${new Date(x.createdAt).toLocaleString('ar-EG')}</div></div></div>`).join('');
+  return `<div class="section-head"><h2>سجل العمليات والتعديلات</h2></div><div class="ledger">${rows || '<div class="empty-illustration">لا توجد عمليات مسجلة</div>'}</div>`;
 }
 
 function attachAdminDashboardEvents(){
   attachTopbarSearchEvents();
   attachLogout();
-  document.querySelectorAll('.tab-btn').forEach(b=> b.onclick = ()=>{ UI.activeTab=b.dataset.tab; UI.error=''; render(); });
+  document.querySelectorAll('.tab-btn').forEach(b=> {
+    b.onclick = ()=>{ UI.activeTab = b.dataset.tab; render(); };
+  });
 
-  if(UI.activeTab==='departments'){
-    document.getElementById('addDeptBtn').onclick = async ()=>{
-      const name = document.getElementById('newDeptName').value.trim();
-      if(!name){ UI.error='اكتب اسم القسم'; render(); return; }
-      DB.departments.push({ id: uid(), name });
-      await saveDepartments(); UI.error=''; render();
-    };
-    document.querySelectorAll('[data-remove-dept]').forEach(b=> b.onclick = async ()=>{
-      if(!confirm('حذف القسم؟')) return;
-      DB.departments = DB.departments.filter(d=>d.id!==b.dataset.removeDept);
-      await saveDepartments(); render();
-    });
-  }
-
-  if(UI.activeTab==='people'){ attachPeopleFormEvents(true, null); }
-  if(UI.activeTab==='jobs'){ attachJobsEvents(); }
-  if(UI.activeTab==='leaveBalances') attachLeaveBalancesEvents(true,null);
-  if(UI.activeTab==='leaveReport') attachLeaveReportEvents(true,null);
-  if(UI.activeTab==='requests'){ attachRequestsEvents(true, null); }
-  if(UI.activeTab==='penalties'){ attachPenaltiesEvents(true, null); }
-  if(UI.activeTab==='penaltyReport'){ attachPenaltyReportEvents(true, null); }
-  if(UI.activeTab==='attendance'){
-    document.getElementById('attDatePick').onchange = e=>{ UI.attDate=e.target.value; render(); };
-    const df = document.getElementById('attDeptFilter'); if(df) df.onchange = e=>{ UI.attDeptFilter=e.target.value; render(); };
-  }
-  if(UI.activeTab==='reports'){ attachReportsEvents(true, null); }
-  if(UI.activeTab==='backup'){ attachBackupEvents(); }
-}
-
-function attachPeopleFormEvents(isAdmin, deptScopeId){
   const templateBtn = document.getElementById('downloadEmpTemplateBtn');
   if(templateBtn) templateBtn.onclick = () => downloadEmployeeExcelTemplate();
 
@@ -1799,186 +1152,214 @@ function attachPeopleFormEvents(isAdmin, deptScopeId){
       importInput.value = '';
     };
   }
-  const addBtn = document.getElementById('addPersonBtn');
-  if(addBtn) addBtn.onclick = async ()=>{
-    const name = document.getElementById('newPName').value.trim();
-    const code = document.getElementById('newPCode').value.trim();
-    let job = document.getElementById('newPJob').value;
-    if(job==='__custom__'){ job=prompt('اكتب اسم الوظيفة الجديدة:')?.trim()||''; if(job && isAdmin && !DB.jobTitles.includes(job)){ DB.jobTitles.push(job); await saveJobTitles(); } }
-    const roleEl = document.getElementById('newPRole');
-    const role = isAdmin ? (roleEl ? roleEl.value : 'employee') : 'employee';
-    const deptSel = document.getElementById('newPDept').value;
-    const departmentId = isAdmin ? deptSel : deptScopeId;
-    const phone = document.getElementById('newPPhone').value.trim();
 
-    if(!name || !departmentId || !code){ 
-      UI.error='يرجى إدخال اسم الموظف، والكود الخاص به، وتحديد القسم'; 
-      render(); return; 
-    }
-    
-    if(DB.people.some(p=>p.code && p.code.toLowerCase()===code.toLowerCase())){
-      UI.error='هذا الكود مستخدم بالفعل لموظف آخر، يرجى كتابة كود مختلف'; render(); return;
-    }
-
-    DB.people.push({ 
-      id: uid(), name, jobTitle: job, role, departmentId, password: '', phone, code, disabled: false, createdAt: new Date().toISOString() 
-    });
-
-    await savePeople(); 
-    await audit('إضافة موظف جديد', `تمت إضافة ${name} بالكود (${code})`); 
-    UI.error=''; render();
-  };
-
-  document.querySelectorAll('[data-toggle-status]').forEach(b=>{
-    b.onclick = async ()=>{
-      const person = personById(b.dataset.toggleStatus);
-      if(!person) return;
-      const willDisable = !person.disabled;
-      const actionText = willDisable ? 'تعطيل حساب' : 'إعادة تشغيل حساب';
-      if(!confirm(`هل أنت متأكد من ${actionText} الموظف (${person.name})؟`)) return;
-      person.disabled = willDisable;
-      await savePeople();
-      await audit(`${actionText}`, `قام الأدمن بـ ${actionText} للموظف ${person.name}`);
-      render();
+  if(UI.activeTab==='departments'){
+    const addBtn = document.getElementById('addDeptBtn');
+    if(addBtn) addBtn.onclick = async ()=>{
+      const name = document.getElementById('newDeptName').value.trim();
+      if(!name) return;
+      DB.departments.push({ id: uid(), name });
+      await saveDepartments(); render();
     };
-  });
-
-  document.querySelectorAll('[data-change-role]').forEach(b=> b.onclick = async ()=>{
-    const person = personById(b.dataset.changeRole);
-    if(!person) return;
-    const current = person.role === 'admin' ? '3' : person.role === 'manager' ? '2' : '1';
-    const choice = prompt(`تعديل صلاحية ${person.name}:
-1: موظف عادي
-2: مدير قسم
-3: أدمن مسؤول`, current);
-    if(!choice) return;
-    const map = {'1':'employee', '2':'manager', '3':'admin'};
-    if(map[choice]){
-      person.role = map[choice];
-      await savePeople();
-      await audit('تعديل صلاحية', `تم تعديل صلاحية ${person.name} إلى ${map[choice]}`);
-      render();
-    }
-  });
-
-  document.querySelectorAll('[data-remove-person]').forEach(b=> b.onclick = async ()=>{
-    if(!confirm('حذف هذا الحساب من السجل؟')) return;
-    DB.people = DB.people.filter(p=>p.id!==b.dataset.removePerson);
-    await savePeople(); render();
-  });
-
-  document.querySelectorAll('[data-reset-pass]').forEach(b=> b.onclick = async ()=>{
-    const person = personById(b.dataset.resetPass);
-    if(!person) return;
-    const np = prompt(`تعيين كلمة مرور جديدة لـ (${person.name}):`, '');
-    if(!np || np.trim().length < 4){ alert('كلمة المرور يجب أن تتكون من 4 خانات على الأقل'); return; }
-    person.password = np.trim();
-    await savePeople();
-    await audit('تغيير كلمة مرور من الأدمن', `قام الأدمن بتعيين كلمة مرور للموظف ${person.name}`);
-    render();
-  });
-
-  document.querySelectorAll('[data-clear-pass]').forEach(b=> b.onclick = async ()=>{
-    const person = personById(b.dataset.clearPass);
-    if(!person || !confirm(`هل تريد مسح كلمة المرور للموظف (${person.name})؟`)) return;
-    person.password = '';
-    await savePeople();
-    await audit('إعادة ضبط كلمة المرور', `تم مسح كلمة المرور لـ ${person.name}`);
-    render();
-  });
-
-  document.querySelectorAll('[data-set-code]').forEach(b=> b.onclick = async ()=>{
-    const person = personById(b.dataset.setCode);
-    if(!person) return;
-    const nc = prompt(`أدخل الكود الوظيفي لـ (${person.name}):`, person.code||'');
-    if(nc===null) return;
-    const cleanCode = nc.trim();
-    if(cleanCode && DB.people.some(p=>p.id!==person.id && p.code && p.code.toLowerCase()===cleanCode.toLowerCase())){
-      alert('هذا الكود مستخدم بالفعل لموظف آخر!'); return;
-    }
-    person.code = cleanCode;
-    await savePeople(); 
-    await audit('تعديل كود الموظف', `تم تعديل كود الموظف ${person.name} إلى (${cleanCode})`);
-    render();
-  });
-
-  document.querySelectorAll('[data-edit-person]').forEach(b=> b.onclick = async ()=>{
-    const p=personById(b.dataset.editPerson); if(!p) return;
-    const name=prompt('اسم الموظف:',p.name); if(name===null) return;
-    const job=prompt('الوظيفة:',p.jobTitle||''); if(job===null) return;
-    p.name=name.trim()||p.name; p.jobTitle=job.trim();
-    await savePeople(); render();
-  });
-}
-
-function attachRequestsEvents(isAdmin, deptScopeId){
-  document.querySelectorAll('[data-filter]').forEach(b=> b.onclick = ()=>{ UI.reqFilter=b.dataset.filter; render(); });
-  document.querySelectorAll('[data-approve]').forEach(b=> b.onclick = async ()=>{
-    const r = DB.requests.find(x=>x.id===b.dataset.approve);
-    if(!isAdmin && r.departmentId!==deptScopeId) return;
-    r.status='approved'; r.reviewedAt=new Date().toISOString();
-
-    if(LEAVE_TYPES[r.type] && r.empId){
-      const emp = personById(r.empId);
-      if(emp){
-        const bal = getLeaveBalance(emp, r.type);
-        const days = r.durationDays || 1;
-        DB.leaveBalances[emp.id] = DB.leaveBalances[emp.id] || {};
-        DB.leaveBalances[emp.id][r.type] = { allocated: bal.allocated, used: bal.used + days };
-        await saveLeaveBalances();
-      }
-    }
-    await saveRequests(); render();
-  });
-  document.querySelectorAll('[data-reject]').forEach(b=> b.onclick = async ()=>{
-    const r = DB.requests.find(x=>x.id===b.dataset.reject);
-    if(!isAdmin && r.departmentId!==deptScopeId) return;
-    r.status='rejected'; r.reviewedAt=new Date().toISOString();
-    await saveRequests(); render();
-  });
-}
-
-function attachPenaltiesEvents(isAdmin, deptScopeId){
-  const addBtn = document.getElementById('addPenBtn');
-  if(addBtn) addBtn.onclick = async ()=>{
-    const empId = document.getElementById('penEmp').value;
-    const type = document.getElementById('penType').value;
-    const reason = document.getElementById('penReason').value.trim();
-    if(!empId || !reason){ UI.error='اختر الموظف واكتب سبب الجزاء'; render(); return; }
-    const emp = personById(empId);
-    const applier = UI.adminAuthed ? { name: DB.adminConfig.name } : UI.currentPerson;
-    DB.penalties.push({
-      id: uid(), empId, empName: emp.name, departmentId: emp.departmentId, type, reason,
-      appliedByName: applier.name, createdAt: new Date().toISOString()
-    });
-    await savePenalties(); await audit('تسجيل جزاء',`تم تسجيل جزاء على ${emp.name}`); UI.error=''; render();
-  };
-
-  if(isAdmin){
-    document.querySelectorAll('[data-delete-penalty]').forEach(b=>{
+    document.querySelectorAll('[data-remove-dept]').forEach(b=> {
       b.onclick = async ()=>{
-        const penId = b.dataset.deletePenalty;
-        const pen = DB.penalties.find(p=>p.id===penId);
-        if(!pen || !confirm(`هل أنت متأكد من حذف هذا الجزاء؟`)) return;
-        DB.penalties = DB.penalties.filter(p=>p.id!==penId);
-        await savePenalties();
+        DB.departments = DB.departments.filter(d=>d.id!==b.dataset.removeDept);
+        await saveDepartments(); render();
+      };
+    });
+  }
+
+  if(UI.activeTab==='people'){
+    const addP = document.getElementById('addPersonBtn');
+    if(addP) addP.onclick = async ()=>{
+      const name = document.getElementById('newPName').value.trim();
+      const code = document.getElementById('newPCode').value.trim();
+      const job = document.getElementById('newPJob').value;
+      const role = document.getElementById('newPRole').value;
+      const departmentId = document.getElementById('newPDept').value;
+      if(!name || !departmentId || !code) return;
+      DB.people.push({ id: uid(), name, code, jobTitle: job, role, departmentId, password:'', disabled:false, createdAt:new Date().toISOString() });
+      await savePeople(); render();
+    };
+    document.querySelectorAll('[data-remove-person]').forEach(b=> {
+      b.onclick = async ()=>{
+        DB.people = DB.people.filter(p=>p.id!==b.dataset.removePerson);
+        await savePeople(); render();
+      };
+    });
+    document.querySelectorAll('[data-set-code]').forEach(b=> {
+      b.onclick = async ()=>{
+        const p = personById(b.dataset.setCode);
+        if(!p) return;
+        const code = prompt('أدخل الكود الوظيفي الجديد:', p.code||'');
+        if(code===null) return;
+        p.code = code.trim();
+        await savePeople(); render();
+      };
+    });
+    document.querySelectorAll('[data-reset-pass-quick]').forEach(b=> {
+      b.onclick = async ()=>{
+        const p = personById(b.dataset.resetPassQuick);
+        if(!p) return;
+        const np = prompt(`أدخل كلمة المرور الجديدة للموظف (${p.name}):`, '');
+        if(!np || np.trim().length < 4){ alert('يجب ألا تقل كلمة المرور عن 4 خانات'); return; }
+        p.password = np.trim();
+        await savePeople();
+        alert('✅ تم تحديث كلمة المرور بنجاح');
         render();
       };
     });
+    document.querySelectorAll('[data-change-role]').forEach(b=> {
+      b.onclick = async ()=>{
+        const p = personById(b.dataset.changeRole);
+        if(!p) return;
+        const choice = prompt(`تعديل صلاحية ${p.name}:\n1: موظف\n2: مدير قسم\n3: أدمن`, p.role==='admin'?'3':p.role==='manager'?'2':'1');
+        const map = {'1':'employee', '2':'manager', '3':'admin'};
+        if(map[choice]){ p.role = map[choice]; await savePeople(); render(); }
+      };
+    });
+    document.querySelectorAll('[data-edit-person]').forEach(b=> {
+      b.onclick = async ()=>{
+        const p = personById(b.dataset.editPerson);
+        if(!p) return;
+        const name = prompt('تعديل اسم الموظف:', p.name);
+        if(!name) return;
+        p.name = name.trim();
+        await savePeople(); render();
+      };
+    });
+  }
+
+  if(UI.activeTab==='jobs'){
+    const addJ = document.getElementById('addJobBtn');
+    if(addJ) addJ.onclick = async ()=>{
+      const v = document.getElementById('newJobTitle').value.trim();
+      if(!v) return;
+      if(!DB.jobTitles.includes(v)) DB.jobTitles.push(v);
+      await saveJobTitles(); render();
+    };
+    document.querySelectorAll('[data-remove-job]').forEach(b=> {
+      b.onclick = async ()=>{
+        DB.jobTitles.splice(+b.dataset.removeJob, 1);
+        await saveJobTitles(); render();
+      };
+    });
+  }
+
+  if(UI.activeTab==='leaveBalances'){
+    document.querySelectorAll('[data-edit-leave]').forEach(b=>{
+      b.onclick = async ()=>{
+        const p = personById(b.dataset.editLeave);
+        if(!p) return;
+        const av = prompt(`رصيد السنوية لـ (${p.name}):`, '21');
+        const cv = prompt(`رصيد العارضة لـ (${p.name}):`, '7');
+        if(av===null || cv===null) return;
+        DB.leaveBalances[p.id] = { annual_leave:{ allocated:parseInt(av,10)||0, used:0 }, casual_leave:{ allocated:parseInt(cv,10)||0, used:0 } };
+        await saveLeaveBalances(); render();
+      };
+    });
+  }
+
+  if(UI.activeTab==='requests'){
+    document.querySelectorAll('[data-approve]').forEach(b=> {
+      b.onclick = async ()=>{
+        const r = DB.requests.find(x=>x.id===b.dataset.approve);
+        if(!r) return;
+        r.status = 'approved';
+        await saveRequests(); render();
+      };
+    });
+    document.querySelectorAll('[data-reject]').forEach(b=> {
+      b.onclick = async ()=>{
+        const r = DB.requests.find(x=>x.id===b.dataset.reject);
+        if(!r) return;
+        r.status = 'rejected';
+        await saveRequests(); render();
+      };
+    });
+  }
+
+  if(UI.activeTab==='penalties'){
+    const addPen = document.getElementById('addPenBtn');
+    if(addPen) addPen.onclick = async ()=>{
+      const empid = document.getElementById('penEmp').value;
+      const type = document.getElementById('penType').value;
+      const reason = document.getElementById('penReason').value.trim();
+      if(!empid || !reason) return;
+      const emp = personById(empid);
+      DB.penalties.push({ id:uid(), empId:empid, empName:emp.name, departmentId:emp.departmentId, type, reason, appliedByName:'الأدمن', createdAt:new Date().toISOString() });
+      await savePenalties(); render();
+    };
+  }
+
+  if(UI.activeTab==='attendance'){
+    const dp = document.getElementById('attDatePick');
+    if(dp) dp.onchange = e=>{ UI.attDate = e.target.value; render(); };
+  }
+
+  if(UI.activeTab==='reports'){
+    const rb = document.getElementById('downloadReportBtn');
+    if(rb) rb.onclick = ()=>{
+      const rows = DB.people.filter(p=>p.role==='employee').map(e=>({
+        'الاسم': e.name, 'القسم': deptName(e.departmentId), 'الكود': e.code||'—'
+      }));
+      const wb = XLSX.utils.book_new();
+      createAndSaveArabicExcel(wb, 'تقرير', rows, `تقرير-${UI.reportMonth||monthStr()}.xlsx`);
+    };
+  }
+
+  if(UI.activeTab==='penaltyReport'){
+    const pb = document.getElementById('downloadPenaltyReportBtn');
+    if(pb) pb.onclick = ()=>{
+      const rows = DB.penalties.map(p=>({
+        'الموظف': p.empName, 'القسم': deptName(p.departmentId), 'نوع الجزاء': PENALTY_TYPES[p.type]?.label||p.type, 'السبب': p.reason, 'بواسطة': p.appliedByName
+      }));
+      const wb = XLSX.utils.book_new();
+      createAndSaveArabicExcel(wb, 'تقرير الجزاءات', rows, `تقرير-الجزاءات.xlsx`);
+    };
+  }
+
+  if(UI.activeTab==='leaveReport'){
+    const lb = document.getElementById('downloadLeaveReportBtn');
+    if(lb) lb.onclick = ()=>{
+      const rows = DB.requests.filter(r=>r.status==='approved' && LEAVE_TYPES[r.type]).map(r=>({
+        'الموظف': r.empName, 'القسم': deptName(r.departmentId), 'نوع الإجازة': LEAVE_TYPES[r.type]?.label, 'السبب': r.reason
+      }));
+      const wb = XLSX.utils.book_new();
+      createAndSaveArabicExcel(wb, 'تقرير الإجازات', rows, `تقرير-الإجازات.xlsx`);
+    };
+  }
+
+  if(UI.activeTab==='backup'){
+    const eb = document.getElementById('exportJsonBtn');
+    if(eb) eb.onclick = ()=> exportFullJsonBackup();
+    const exb = document.getElementById('exportFullExcelBtn');
+    if(exb) exb.onclick = ()=> exportFullExcelBackup();
+    const triggerBtn = document.getElementById('triggerImportBtn');
+    const fileInput = document.getElementById('importJsonFileInput');
+    if(triggerBtn && fileInput){
+      triggerBtn.onclick = ()=> fileInput.click();
+      fileInput.onchange = (e)=>{
+        const file = e.target.files[0];
+        if(file) restoreFromJsonFile(file);
+        fileInput.value = '';
+      };
+    }
   }
 }
 
 function renderManagerDashboard(){
   const mgr = UI.currentPerson;
-  const pending = DB.requests.filter(r=>r.departmentId===mgr.departmentId && r.status==='pending').length;
+  const pending = DB.requests.filter(r=>r.departmentId===mgr.departmentId && r.status==='pending' && r.empId!==mgr.id).length;
   return `<div style="display:flex; flex-direction:column; min-height:100vh;">
     ${topbar(`مدير قسم ${esc(deptName(mgr.departmentId))} — ${esc(mgr.name)}`, 'mgr')}
     <div class="tabs">
-      <button class="tab-btn ${UI.mgrTab==='people'?'active':''}" data-mtab="people">موظفين قسمي</button>
+      <button class="tab-btn ${UI.mgrTab==='people'?'active':''}" data-mtab="people">موظفي القسم</button>
       <button class="tab-btn ${UI.mgrTab==='requests'?'active':''}" data-mtab="requests">${pending>0?`<span class="tab-badge">${pending}</span>`:''}الطلبات</button>
       <button class="tab-btn ${UI.mgrTab==='penalties'?'active':''}" data-mtab="penalties">الجزاءات</button>
-      <button class="tab-btn ${UI.mgrTab==='attendance'?'active':''}" data-mtab="attendance">الحضور اليومي</button>
+      <button class="tab-btn ${UI.mgrTab==='attendance'?'active':''}" data-mtab="attendance">الحضور</button>
       <button class="tab-btn ${UI.mgrTab==='reports'?'active':''}" data-mtab="reports">التقرير الشهري</button>
+      <button class="tab-btn ${UI.mgrTab==='mySelf'?'active':''}" data-mtab="mySelf">👤 صفحتي وطلباتي</button>
     </div>
     <div class="content">
       ${UI.mgrTab==='people' ? renderPeopleTab(false, mgr.departmentId) : ''}
@@ -1986,133 +1367,145 @@ function renderManagerDashboard(){
       ${UI.mgrTab==='penalties' ? renderPenaltiesTab(false, mgr.departmentId) : ''}
       ${UI.mgrTab==='attendance' ? renderAttendanceTab(false, mgr.departmentId) : ''}
       ${UI.mgrTab==='reports' ? renderReportsTab(false, mgr.departmentId) : ''}
+      ${UI.mgrTab==='mySelf' ? renderEmployeeDashboardContent(mgr) : ''}
     </div>
   </div>`;
 }
+
 function attachManagerDashboardEvents(){
   attachTopbarSearchEvents();
   attachLogout();
-  const mgr = UI.currentPerson;
-  document.querySelectorAll('.tab-btn').forEach(b=> b.onclick = ()=>{ UI.mgrTab=b.dataset.mtab; UI.error=''; render(); });
-  if(UI.mgrTab==='people') attachPeopleFormEvents(false, mgr.departmentId);
-  if(UI.mgrTab==='requests') attachRequestsEvents(false, mgr.departmentId);
-  if(UI.mgrTab==='penalties') attachPenaltiesEvents(false, mgr.departmentId);
-  if(UI.mgrTab==='attendance'){ document.getElementById('attDatePick').onchange = e=>{ UI.attDate=e.target.value; render(); }; }
-  if(UI.mgrTab==='reports') attachReportsEvents(false, mgr.departmentId);
+  document.querySelectorAll('.tab-btn').forEach(b=> {
+    b.onclick = ()=>{ UI.mgrTab = b.dataset.mtab; render(); };
+  });
+
+  if(UI.mgrTab==='requests'){
+    document.querySelectorAll('[data-approve]').forEach(b=> {
+      b.onclick = async ()=>{
+        const r = DB.requests.find(x=>x.id===b.dataset.approve);
+        if(!r) return;
+        r.status = 'approved';
+        await saveRequests(); render();
+      };
+    });
+    document.querySelectorAll('[data-reject]').forEach(b=> {
+      b.onclick = async ()=>{
+        const r = DB.requests.find(x=>x.id===b.dataset.reject);
+        if(!r) return;
+        r.status = 'rejected';
+        await saveRequests(); render();
+      };
+    });
+  }
+
+  if(UI.mgrTab==='penalties'){
+    const addPen = document.getElementById('addPenBtn');
+    if(addPen) addPen.onclick = async ()=>{
+      const empid = document.getElementById('penEmp').value;
+      const type = document.getElementById('penType').value;
+      const reason = document.getElementById('penReason').value.trim();
+      if(!empid || !reason){ alert('يرجى اختيار الموظف وكتابة السبب'); return; }
+      const emp = personById(empid);
+      DB.penalties.push({ id:uid(), empId:empid, empName:emp.name, departmentId:emp.departmentId, type, reason, appliedByName:UI.currentPerson.name, createdAt:new Date().toISOString() });
+      await savePenalties(); render();
+    };
+  }
+
+  if(UI.mgrTab==='attendance'){
+    const dp = document.getElementById('attDatePick');
+    if(dp) dp.onchange = e=>{ UI.attDate = e.target.value; render(); };
+  }
+
+  if(UI.mgrTab==='reports'){
+    const rb = document.getElementById('downloadReportBtn');
+    if(rb) rb.onclick = ()=>{
+      const rows = DB.people.filter(p=>p.role==='employee' && p.departmentId===UI.currentPerson.departmentId).map(e=>({
+        'الاسم': e.name, 'القسم': deptName(e.departmentId), 'الكود': e.code||'—'
+      }));
+      const wb = XLSX.utils.book_new();
+      createAndSaveArabicExcel(wb, 'تقرير القسم', rows, `تقرير-${deptName(UI.currentPerson.departmentId)}.xlsx`);
+    };
+  }
+
+  if(UI.mgrTab==='mySelf'){
+    attachAttendanceAndReqActions(UI.currentPerson);
+  }
+}
+
+function renderEmployeeDashboardContent(emp){
+  const date = todayStr();
+  const att = DB.attendance[emp.id+'_'+date] || {};
+  const annualBal = getLeaveBalance(emp, 'annual_leave');
+  const casualBal = getLeaveBalance(emp, 'casual_leave');
+  const myRequests = DB.requests.filter(r=>r.empId===emp.id).slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+
+  const historyRows = myRequests.map(r=>`<div class="ledger-row"><div class="row-main"><div class="name">${REQUEST_TYPES[r.type]?.label||r.type}</div><div class="meta">${requestDateLabel(r)} - ${r.reason}</div></div><div class="row-actions"><span class="stamp ${r.status==='approved'?'stamp-approved':'stamp-pending'}">${r.status==='approved'?'معتمد':'قيد المراجعة'}</span></div></div>`).join('');
+
+  return `
+    <div class="dept-banner">
+      <div class="item"><div class="label">القسم</div><div class="val">${esc(deptName(emp.departmentId))}</div></div>
+      <div class="item"><div class="label">رصيد الإجازات</div><div class="val">سنوي: ${annualBal.isSet?annualBal.remaining:'لم يحدد'} | عارضة: ${casualBal.isSet?casualBal.remaining:'لم يحدد'}</div></div>
+    </div>
+    <div class="today-card">
+      <div class="date">${fmtDate(date)}</div>
+      <div class="times">
+        <div class="time-block"><strong>${att.checkIn || '—'}</strong><span>دخول</span></div>
+        <div class="time-block"><strong>${att.checkOut || '—'}</strong><span>انصراف</span></div>
+      </div>
+      ${!att.checkIn ? `<button class="btn btn-primary" id="checkInBtn">تسجيل الحضور الآن</button>` : !att.checkOut ? `<button class="btn btn-outline" id="checkOutBtn">تسجيل الانصراف</button>` : `<div class="info-msg">تم تسجيل حضورك وانصرافك اليوم بنجاح</div>`}
+    </div>
+    <div class="form-card">
+      <h3>تقديم طلب إجازة / إذن</h3>
+      <div class="form-row">
+        <div class="field"><label>نوع الطلب</label><select id="reqType">${Object.entries(REQUEST_TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
+        <div class="field"><label>التاريخ</label><input id="reqDate" type="date" value="${date}"></div>
+      </div>
+      <div class="field"><label>السبب</label><textarea id="reqReason" placeholder="اكتب سبب الطلب"></textarea></div>
+      <button class="btn btn-primary btn-block" id="submitReqBtn">إرسال الطلب</button>
+    </div>
+    <div class="section-head"><h2>طلباتي السابقة</h2></div>
+    <div class="ledger">${historyRows || '<div class="empty-illustration">لا توجد طلبات سابقة</div>'}</div>
+  `;
 }
 
 function renderEmployeeDashboard(){
   const emp = UI.currentPerson;
-  const date = todayStr();
-  const att = DB.attendance[emp.id+'_'+date] || {};
-  const myRequests = DB.requests.filter(r=>r.empId===emp.id).slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  const myPenalties = DB.penalties.filter(pn=>pn.empId===emp.id).slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  const annualBal = getLeaveBalance(emp, 'annual_leave');
-  const casualBal = getLeaveBalance(emp, 'casual_leave');
-
-  const historyRows = myRequests.map(r=>{
-    const stampClass = r.status==='approved'?'stamp-approved':r.status==='rejected'?'stamp-rejected':'stamp-pending';
-    const stampText = r.status==='approved'?'معتمد':r.status==='rejected'?'مرفوض':'قيد المراجعة';
-    const info = REQUEST_TYPES[r.type] || { label:r.type };
-    return `<div class="ledger-row"><div class="row-main"><div class="name">${esc(info.label)} — ${requestDateLabel(r)}</div><div class="meta">${esc(r.reason)}</div></div><div class="row-actions"><span class="stamp ${stampClass}">${stampText}</span></div></div>`;
-  }).join('');
-
-  const penaltyRows = myPenalties.map(pn=>{
-    const info = PENALTY_TYPES[pn.type] || { label: pn.type };
-    return `<div class="ledger-row"><div class="row-main"><div class="name">${esc(info.label)}</div><div class="meta">${esc(pn.reason)} · ${fmtDate(pn.createdAt.slice(0,10))}</div></div></div>`;
-  }).join('');
-
   return `<div style="display:flex; flex-direction:column; min-height:100vh;">
     ${topbar(`${emp.name} — ${emp.jobTitle||'موظف'}`, '')}
-    <div class="content">
-      <div class="dept-banner">
-        <div class="item"><div class="label">القسم التابع له</div><div class="val">${esc(deptName(emp.departmentId))}</div></div>
-        <div class="item"><div class="label">الكود الوظيفي</div><div class="val">${emp.code || 'لم يُحدد بعد'}</div></div>
-        <div class="item"><div class="label">رصيد الإجازات</div><div class="val" style="font-size:13px; font-weight:700;">سنوي: ${annualBal.isSet?`${annualBal.remaining}/${annualBal.allocated}`:'لم يحدد'} | عارضة: ${casualBal.isSet?`${casualBal.remaining}/${casualBal.allocated}`:'لم يحدد'}</div></div>
-      </div>
-
-      <div class="today-card">
-        <div class="date">${fmtDate(date)}</div>
-        <div class="times">
-          <div class="time-block"><strong>${att.checkIn || '—'}</strong><span>وقت الحضور</span></div>
-          <div class="time-block"><strong>${att.checkOut || '—'}</strong><span>وقت الانصراف</span></div>
-        </div>
-        ${!att.checkIn ? `<button class="btn btn-primary" id="checkInBtn">تسجيل الحضور الآن</button>`
-          : !att.checkOut ? `<button class="btn btn-outline" id="checkOutBtn">تسجيل الانصراف</button>`
-          : `<div class="info-msg" style="max-width:280px; margin:0 auto;">تم تسجيل حضورك وانصرافك اليوم</div>`}
-      </div>
-
-      <div class="form-card">
-        <h3>تقديم طلب إذن / إجازة</h3>
-        <div class="form-row">
-          <div class="field"><label>نوع الطلب</label><select id="reqType">${Object.entries(REQUEST_TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
-          <div class="field"><label>التاريخ</label><input id="reqDate" type="date" value="${date}"></div>
-          <div class="field" id="endDateWrap" style="display:none;"><label>إلى تاريخ</label><input id="reqEndDate" type="date" value="${date}"></div>
-        </div>
-        <div class="field"><label>السبب</label><textarea id="reqReason" placeholder="اكتب سبب الطلب"></textarea></div>
-        ${UI.error?`<div class="error-msg">${esc(UI.error)}</div>`:''}
-        <button class="btn btn-primary btn-block" id="submitReqBtn">إرسال الطلب وحفظه</button>
-      </div>
-
-      <div class="section-head"><h2>طلباتي السابقة</h2><span class="count">${myRequests.length}</span></div>
-      <div class="ledger" style="margin-bottom:20px;">${historyRows || `<div class="empty-illustration">لم تقدّم أي طلبات بعد</div>`}</div>
-
-      <div class="section-head"><h2>الجزاءات المسجّلة عليّ</h2><span class="count">${myPenalties.length}</span></div>
-      <div class="ledger">${penaltyRows || `<div class="empty-illustration">لا توجد جزاءات مسجّلة</div>`}</div>
-    </div>
+    <div class="content">${renderEmployeeDashboardContent(emp)}</div>
   </div>`;
 }
 
-function attachEmployeeDashboardEvents(){
-  attachLogout();
-  const emp = UI.currentPerson;
-  const date = todayStr();
-
+function attachAttendanceAndReqActions(emp){
   const inBtn = document.getElementById('checkInBtn');
   if(inBtn) inBtn.onclick = async ()=>{
-    const key = emp.id+'_'+date;
+    const key = emp.id+'_'+todayStr();
     DB.attendance[key] = { ...(DB.attendance[key]||{}), checkIn: nowTime() };
     await saveAttendance(); render();
   };
   const outBtn = document.getElementById('checkOutBtn');
   if(outBtn) outBtn.onclick = async ()=>{
-    const key = emp.id+'_'+date;
+    const key = emp.id+'_'+todayStr();
     DB.attendance[key] = { ...(DB.attendance[key]||{}), checkOut: nowTime() };
     await saveAttendance(); render();
   };
-
-  const typeSel = document.getElementById('reqType');
-  if(typeSel){
-    typeSel.onchange = ()=>{
-      const ew = document.getElementById('endDateWrap');
-      if(ew) ew.style.display = LEAVE_TYPES[typeSel.value] ? 'block' : 'none';
-    };
-  }
 
   const submitBtn = document.getElementById('submitReqBtn');
   if(submitBtn) submitBtn.onclick = async ()=>{
     const type = document.getElementById('reqType').value;
     const rdate = document.getElementById('reqDate').value;
-    const endDate = document.getElementById('reqEndDate')?.value || rdate;
     const reason = document.getElementById('reqReason').value.trim();
-
-    if(!rdate || !reason){ UI.error='أكمل التاريخ والسبب'; render(); return; }
-
-    const durationDays = LEAVE_TYPES[type] ? calcDaysInclusive(rdate, endDate) : 1;
-    const newReq = {
-      id: uid(), empId: emp.id, empName: emp.name, departmentId: emp.departmentId,
-      type, date: rdate, startDate: rdate, endDate, durationDays, reason,
-      status:'pending', createdAt:new Date().toISOString()
-    };
-
-    DB.requests.push(newReq);
-    await saveRequests();
-    UI.error = '';
-    render();
+    if(!rdate || !reason){ alert('يرجى كتابة التاريخ والسبب'); return; }
+    DB.requests.push({ id: uid(), empId: emp.id, empName: emp.name, departmentId: emp.departmentId, type, date: rdate, startDate: rdate, endDate: rdate, durationDays: 1, reason, status:'pending', createdAt:new Date().toISOString() });
+    await saveRequests(); render();
   };
 }
 
-// Start immediately
+function attachEmployeeDashboardEvents(){
+  attachLogout();
+  attachAttendanceAndReqActions(UI.currentPerson);
+}
+
 loadAll();
 </script>
 </body>
